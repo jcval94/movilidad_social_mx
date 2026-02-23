@@ -1,0 +1,11 @@
+area,variant,metric,value
+section4,A_baseline,line_count,782
+section4,A_baseline,function_defs,20
+section4,A_baseline,duplicate_function_defs,5
+section4,B_refactor,line_count,348
+section4,B_refactor,function_defs,15
+section4,B_refactor,duplicate_function_defs,0
+data_loading,A_baseline_uncached,avg_call_seconds,2.108554
+data_loading,B_refactor_cached,first_call_seconds,2.207796
+data_loading,B_refactor_cached,cache_hit_avg_seconds,0.065818
+data_loading,B_refactor_cached,speedup_cache_hit_vs_uncached_x,32.04
