@@ -1,209 +1,225 @@
 <div align="center">
 
-# 🇲🇽 Movilidad Social en México
-### *Plataforma interactiva basada en EMOVI 2017*
+# 🌍🇲🇽 Movilidad Social en México
+### *Una plataforma de análisis ciudadano para entender oportunidades, brechas y trayectorias de vida*
 
-[![Streamlit App](https://img.shields.io/badge/Streamlit-Producción-ff4b4b?logo=streamlit&logoColor=white)](https://movilidadsocialmx-cfha5gdjbcohddyg9c3ftb.streamlit.app/)
+[![Demo en Streamlit](https://img.shields.io/badge/Demo-Streamlit-ff4b4b?logo=streamlit&logoColor=white)](https://movilidadsocialmx-cfha5gdjbcohddyg9c3ftb.streamlit.app/)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776ab?logo=python&logoColor=white)](https://www.python.org/)
-[![Status](https://img.shields.io/badge/Estado-Activo-2ea44f)](#)
+[![Datos](https://img.shields.io/badge/Datos-EMOVI%202017-0a7ea4)](#-datos-y-modelos)
+[![Estado](https://img.shields.io/badge/Estado-Activo-2ea44f)](#)
 
-**Explora, compara e interpreta trayectorias de movilidad socioeconómica de forma visual, clara y accionable.**
+**Diseñado para dos públicos al mismo tiempo:**
+
+🧑‍⚖️ **Jurados y evaluadores técnicos** → evidencia, metodología y trazabilidad.  
+👨‍👩‍👧‍👦 **Público general** → explicaciones claras, visuales y accionables.
 
 </div>
 
 ---
 
-## ✨ Sitio en producción
+## 🚀 Ver la aplicación en vivo
 
-> Accede a la aplicación desplegada aquí:  
-> **🔗 https://movilidadsocialmx-cfha5gdjbcohddyg9c3ftb.streamlit.app/**
-
----
-
-## 🧭 Tabla de contenido
-
-- [🎯 ¿Qué resuelve este proyecto?](#qué-resuelve-este-proyecto)
-- [🏗️ Arquitectura funcional](#arquitectura-funcional)
-- [🚀 Inicio rápido](#inicio-rápido)
-- [🖥️ Guía completa por ventanas](#guía-completa-por-ventanas)
-  - [1) Movilidad](#1-movilidad)
-  - [2) Evolución Temporal](#2-evolución-temporal)
-  - [3) ¿Qué clase soy?](#3-qué-clase-soy)
-  - [4) Pobre a Rico](#4-pobre-a-rico)
-- [🧠 Cómo interpretar resultados correctamente](#cómo-interpretar-resultados-correctamente)
-- [🗂️ Datos, modelos y artefactos](#datos-modelos-y-artefactos)
-- [📁 Estructura del repositorio](#estructura-del-repositorio)
-- [🛠️ Solución de problemas](#solución-de-problemas)
+> ### 🔗 https://movilidadsocialmx-cfha5gdjbcohddyg9c3ftb.streamlit.app/
+>
+> Puedes abrirla directamente en navegador, sin instalación local.
 
 ---
 
-## 🎯 ¿Qué resuelve este proyecto?
+## 🧭 Índice
 
-Esta aplicación permite analizar movilidad social con una experiencia amigable para perfiles técnicos y no técnicos.
-
-### Capacidades clave
-
-| Capacidad | ¿Para qué sirve? |
-|---|---|
-| Comparación entre grupos | Contrastar movilidad entre segmentos poblacionales usando filtros. |
-| Evolución intergeneracional | Observar cambios por cohorte de nacimiento. |
-| Estimación de clase | Inferir probabilidades de clase socioeconómica con un modelo supervisado. |
-| Recomendaciones por objetivo | Identificar variables asociadas a metas de movilidad (ej. “de pobre a rico”). |
-
----
-
-## 🏗️ Arquitectura funcional
-
-El proyecto está organizado de forma modular:
-
-- **`app.py`**: orquestador principal, layout, tabs y controles globales.
-- **`section1.py`**: análisis comparativo de movilidad con filtros y base de referencia.
-- **`section2.py`**: series de transición por cohorte (origen → destino).
-- **`section3.py`**: formulario de activos del hogar + predicción probabilística.
-- **`section4.py`**: motor de recomendaciones por target con KNN + clusters.
-- **`data_utils.py` / `config.py`**: carga de datos, mapeos y catálogos de variables.
-
-> 💡 **Diseño del flujo**: un filtro principal alimenta varias vistas para favorecer comparabilidad entre ventanas.
+- [1) ¿Por qué este proyecto importa?](#1-por-qué-este-proyecto-importa)
+- [2) ¿Qué problema resuelve?](#2-qué-problema-resuelve)
+- [3) ¿Qué hace diferente a esta propuesta?](#3-qué-hace-diferente-a-esta-propuesta)
+- [4) Arquitectura de la solución](#4-arquitectura-de-la-solución)
+- [5) Guía de uso por ventanas](#5-guía-de-uso-por-ventanas)
+  - [5.1 Controles globales](#51-controles-globales)
+  - [5.2 Ventana 1: Movilidad](#52-ventana-1-movilidad)
+  - [5.3 Ventana 2: Evolución Temporal](#53-ventana-2-evolución-temporal)
+  - [5.4 Ventana 3: ¿Qué clase soy?](#54-ventana-3-qué-clase-soy)
+  - [5.5 Ventana 4: Pobre a Rico](#55-ventana-4-pobre-a-rico)
+- [6) Cómo interpretar resultados sin errores comunes](#6-cómo-interpretar-resultados-sin-errores-comunes)
+- [7) Datos y modelos](#7-datos-y-modelos)
+- [8) Ejecución local (paso a paso)](#8-ejecución-local-paso-a-paso)
+- [9) Estructura del repositorio](#9-estructura-del-repositorio)
+- [10) Limitaciones y próximos pasos](#10-limitaciones-y-próximos-pasos)
+- [11) Solución de problemas](#11-solución-de-problemas)
 
 ---
 
-## 🚀 Inicio rápido
+## 1) ¿Por qué este proyecto importa?
 
-### 1) Requisitos
+La movilidad social no es sólo un tema económico: es una pregunta sobre **justicia de oportunidades**.  
+Este proyecto traduce datos complejos en una experiencia visual que ayuda a responder una duda clave:
 
-- Python **3.9+** (recomendado 3.10+)
-- `pip`
+> **¿Qué tanto influye el origen social en el destino de las personas en México?**
 
-### 2) Instalación
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 3) Ejecución local
-
-```bash
-streamlit run app.py
-```
-
-La app abrirá normalmente en: `http://localhost:8501`
+Con esta app, cualquier persona puede explorar patrones de movilidad y comparar grupos de forma transparente.
 
 ---
 
-## 🖥️ Guía completa por ventanas
+## 2) ¿Qué problema resuelve?
 
-### Controles globales (sidebar)
+Muchas herramientas de análisis social son difíciles de usar fuera del ámbito técnico. Esta plataforma cierra esa brecha al ofrecer:
 
-Antes de entrar a cada pestaña, hay tres elementos transversales:
-
-- **⟳ Refresh**: reinicia estado (`session_state`) y recarga la app.
-- **🎲 Random**: genera selecciones aleatorias útiles para exploración rápida.
-- **Filtro principal**: concentra segmentación dinámica que impacta varias visualizaciones.
+- ✅ **Interfaz intuitiva** para usuarios no especialistas.
+- ✅ **Rigor analítico** para evaluación técnica.
+- ✅ **Comparaciones claras** entre filtros, cohortes y objetivos de movilidad.
+- ✅ **Resultados interpretables** (no sólo métricas abstractas).
 
 ---
 
-## 1) Movilidad
+## 3) ¿Qué hace diferente a esta propuesta?
 
-### Objetivo
-Comparar la distribución de destino socioeconómico para personas que parten de:
+### Enfoque dual: “impacto + entendibilidad”
+
+| Elemento | Valor para jurado técnico | Valor para público general |
+|---|---|---|
+| Visualizaciones comparativas | Permiten contrastes entre base y subgrupos | Se entienden en segundos |
+| Series por cohorte | Muestran tendencias intergeneracionales | Ayudan a “contar historias” de cambio |
+| Modelo probabilístico de clase | Introduce predicción con trazabilidad de variables | Da retroalimentación inmediata y concreta |
+| Recomendaciones por target | Conecta perfiles similares con acciones posibles | Traduce análisis en lenguaje práctico |
+
+### Principios de diseño
+
+- **Claridad antes que complejidad.**
+- **Interpretabilidad antes que opacidad.**
+- **Decisiones con contexto, no con números aislados.**
+
+---
+
+## 4) Arquitectura de la solución
+
+La aplicación está construida en **Streamlit** y organizada por módulos:
+
+- `app.py` → layout principal, barra lateral y tabs.
+- `section1.py` → comparación de movilidad (Q1 vs Q5) con filtros/base.
+- `section2.py` → evolución temporal por cohorte (origen → destino).
+- `section3.py` → clasificación probabilística de clase socioeconómica.
+- `section4.py` → recomendaciones de cambio por target (KNN + clusters descriptivos).
+- `data_utils.py` y `config.py` → procesamiento base y catálogos.
+
+> 🔍 El diseño modular permite auditar, extender y mantener cada componente por separado.
+
+---
+
+## 5) Guía de uso por ventanas
+
+## 5.1 Controles globales
+
+En la barra lateral aparecen controles que afectan varias vistas:
+
+- **⟳ Refresh**: reinicia el estado de la sesión.
+- **🎲 Random**: genera filtros/selecciones aleatorias para exploración rápida.
+- **Filtro principal**: define segmentaciones para análisis comparado.
+
+---
+
+## 5.2 Ventana 1: Movilidad
+
+### ¿Qué responde?
+
+Compara cómo se distribuye el destino socioeconómico para quienes vienen de:
 
 - **Origen Clase Baja (Q1)**
 - **Origen Clase Alta (Q5)**
 
-### ¿Qué ve el usuario?
+### ¿Qué ves en pantalla?
 
-- Selector de variables (máx. 3) y categorías asociadas.
-- Opción **Cambiar base** para definir benchmark personalizado.
-- Visual de barras comparando **Base vs Filtro** en dos subplots (Q1 y Q5).
-- Encabezado con descripción textual de filtros activos.
+- Selección de hasta 3 variables de filtro.
+- Selección de categorías por variable.
+- Opción **Cambiar base** para benchmark personalizado.
+- Gráfica con barras **Base vs Filtro** en dos subplots (Q1 y Q5).
 
-### Clave de lectura
+### ¿Cómo leerla bien?
 
-✅ Úsala para evaluar brechas relativas entre grupos.  
-⚠️ Si filtras demasiado, revisa estabilidad por tamaño de muestra.
+- Si **Filtro** se aleja de **Base**, hay diferencias relevantes entre grupos.
+- Evita conclusiones fuertes cuando el filtro deja pocos casos.
 
 ---
 
-## 2) Evolución Temporal
+## 5.3 Ventana 2: Evolución Temporal
 
-### Objetivo
-Medir el porcentaje de personas que transitan de clase(s) de **origen** a clase(s) de **destino**, por cohorte.
+### ¿Qué responde?
 
-### ¿Qué ve el usuario?
+¿Qué porcentaje de personas pasa de una(s) clase(s) de **origen** a una(s) de **destino** en distintas cohortes?
 
-- Multiselect de **Origen** y **Destino**.
-- Gráfica de líneas con marcadores:
+### ¿Qué ves en pantalla?
+
+- Multiselect de clases de **Origen**.
+- Multiselect de clases de **Destino**.
+- Serie de líneas con marcadores:
   - Eje X: cohorte de nacimiento.
   - Eje Y: probabilidad/porcentaje de transición.
-  - Color: grupos derivados de filtros.
+  - Color: grupos según filtros activos.
 
-### Clave de lectura
+### ¿Cómo leerla bien?
 
-- Pendientes positivas/negativas muestran cambios generacionales.
-- Diferencias de color reflejan heterogeneidad entre segmentos.
+- Cambios de pendiente reflejan variación intergeneracional.
+- Diferencias entre líneas muestran desigualdades entre subgrupos.
 
 ---
 
-## 3) ¿Qué clase soy?
+## 5.4 Ventana 3: ¿Qué clase soy?
 
-### Objetivo
-Estimar la clase socioeconómica mediante un formulario de condiciones/activos del hogar.
+### ¿Qué responde?
 
-### ¿Qué ve el usuario?
+Estimación de la probabilidad de pertenecer a una clase socioeconómica con base en condiciones/activos del hogar.
 
-- Checkboxes de variables del hogar (ej. automóvil, lavadora, microondas, agua entubada).
+### ¿Qué ves en pantalla?
+
+- Formulario de checkboxes (ej. automóvil, lavadora, microondas, agua entubada).
 - Botón **Procesar**.
-- Gráfica de barras con probabilidad por clase.
-- Mensaje con la clase de mayor probabilidad.
+- Barras de probabilidad por clase.
+- Clase más probable como resumen textual.
 
-### Clave de lectura
+### ¿Cómo leerla bien?
 
-> El resultado es **probabilístico**, no determinístico.  
-> Si varias clases quedan cercanas, interpreta con cautela.
+> Resultado **probabilístico**, no determinista.  
+> Si dos clases aparecen cercanas, la diferencia puede no ser concluyente.
 
 ---
 
-## 4) Pobre a Rico
+## 5.5 Ventana 4: Pobre a Rico
 
-> Aunque la pestaña se llama “Pobre a Rico”, permite múltiples **targets** (subir, bajar, permanecer, etc.).
+> Aunque el tab se llama “Pobre a Rico”, internamente admite múltiples **targets**: subir, bajar, permanecer, etc.
 
-### Objetivo
-Generar recomendaciones interpretables para un objetivo específico de movilidad social.
+### ¿Qué responde?
 
-### ¿Qué ve el usuario?
+¿Qué variables y combinaciones de condiciones se asocian con un objetivo de movilidad para perfiles similares?
 
-1. Selector de **Target** con nombres amigables.
-2. Cuestionario dinámico (preguntas según variables relevantes).
+### ¿Qué ves en pantalla?
+
+1. Selector de **Target**.
+2. Cuestionario dinámico.
 3. Botón **Ejecutar**.
 4. Resultados por cluster con:
-   - incremento/probabilidad,
+   - probabilidad/incremento,
    - nivel de confianza,
-   - variables y rangos,
-   - señales accionables (quién puede cambiarlo, involucrados, recursos).
+   - variables clave y rangos,
+   - factores accionables (involucrados, recursos, posibilidad de cambio).
 
-### Clave de lectura
+### ¿Cómo leerla bien?
 
-- Interpreta los resultados como **patrones en perfiles similares**, no como reglas universales.
+- Son **patrones descriptivos**, no garantías individuales.
 - Prioriza clusters con mayor señal y mayor confianza.
 
 ---
 
-## 🧠 Cómo interpretar resultados correctamente
+## 6) Cómo interpretar resultados sin errores comunes
 
-Para un uso responsable del análisis:
+Para evitar malas conclusiones:
 
-- **No confundir correlación con causalidad**.
-- **Evitar sobresegmentar** (muestras pequeñas → estimaciones inestables).
-- **Comparar contra base** (general o personalizada) para contexto.
-- **Triangular con evidencia externa** (contexto regional, histórico y política pública).
+1. **No confundir correlación con causalidad.**
+2. **No sobresegmentar** (muestras pequeñas elevan ruido).
+3. **Comparar siempre contra una base** (general o personalizada).
+4. **Triangular con contexto social y territorial**.
+5. **Usar la app como brújula analítica**, no como sentencia definitiva.
 
 ---
 
-## 🗂️ Datos, modelos y artefactos
+## 7) Datos y modelos
 
-### Datos base
+### Fuentes de datos
 
 - `data/ESRU-EMOVI 2017 Entrevistado.dta`
 - `data/ESRU-EMOVI 2017 Hogar.dta`
@@ -212,17 +228,42 @@ Para un uso responsable del análisis:
 
 - `models/modelo_entrenado.joblib`
 
-### Artefactos analíticos (sección 4)
+### Artefactos para recomendaciones (Sección 4)
 
 - `data/df_valiosas_dict.joblib`
 - `data/df_feature_importances_total.joblib`
 - `data/df_clusterizados_total_origi.csv`
 
-> ℹ️ Si cambian preprocesamiento, features o modelos, los resultados de la app pueden variar de forma significativa.
+> ℹ️ Cambios en preprocesamiento o entrenamiento pueden alterar los resultados.
 
 ---
 
-## 📁 Estructura del repositorio
+## 8) Ejecución local (paso a paso)
+
+### Requisitos
+
+- Python 3.9+
+- `pip`
+
+### Instalación
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Levantar la aplicación
+
+```bash
+streamlit run app.py
+```
+
+Por defecto abre en `http://localhost:8501`.
+
+---
+
+## 9) Estructura del repositorio
 
 ```text
 .
@@ -250,37 +291,48 @@ Para un uso responsable del análisis:
 
 ---
 
-## 🛠️ Solución de problemas
+## 10) Limitaciones y próximos pasos
 
-### 1) La app no inicia
+### Limitaciones actuales
 
-- Verifica entorno activo y dependencias:
-  - `source .venv/bin/activate`
-  - `pip install -r requirements.txt`
-- Asegúrate de ejecutar desde la raíz del repo:
-  - `streamlit run app.py`
+- Dependencia de datos históricos (EMOVI 2017).
+- Resultados sensibles al diseño de variables y filtros.
+- Recomendaciones de la sección 4 son descriptivas, no causales.
 
-### 2) Faltan archivos (`.joblib`, `.csv`, `.dta`)
+### Próximas mejoras sugeridas
 
-- Revisa rutas y existencia de archivos en `data/` y `models/`.
-- Confirma permisos de lectura.
+- Integrar métricas de incertidumbre visibles para cada gráfica.
+- Añadir glosario interactivo para términos socioeconómicos.
+- Publicar ejemplos guiados por perfil de usuario (estudiante, policy maker, investigador).
+- Incorporar comparaciones regionales más finas en una nueva ventana.
 
-### 3) Resultados vacíos
+---
 
-- Reduce filtros.
-- Usa **⟳ Refresh** para reiniciar estado.
+## 11) Solución de problemas
 
-### 4) Sección 4 tarda en responder
+### La app no arranca
 
-- Es esperable por el cálculo de vecinos y construcción de descripciones por cluster.
-- Evita ejecuciones consecutivas con combinaciones muy complejas en equipos limitados.
+- Activa tu entorno virtual.
+- Reinstala dependencias con `pip install -r requirements.txt`.
+- Ejecuta `streamlit run app.py` desde la raíz del proyecto.
+
+### No aparecen resultados
+
+- Reduce filtros para aumentar tamaño de muestra.
+- Usa **Refresh** para reiniciar estado.
+
+### Falta un archivo de datos/modelo
+
+- Verifica contenido de `data/` y `models/`.
+- Revisa rutas relativas y permisos de lectura.
 
 ---
 
 <div align="center">
 
-### Hecho con datos, visualización y enfoque de movilidad social 📊
+## 💡 Mensaje final
 
-Si quieres, en la siguiente iteración puedo convertir este README en una versión **con capturas por ventana** y mini tutorial visual paso a paso.
+Este proyecto busca algo simple pero poderoso:  
+**convertir datos de movilidad social en decisiones más informadas, más humanas y más útiles para todos.**
 
 </div>
