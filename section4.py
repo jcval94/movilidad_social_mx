@@ -1,5 +1,6 @@
 import re
 from pathlib import Path
+from textwrap import dedent
 
 import joblib
 import numpy as np
@@ -197,9 +198,9 @@ def map_confidence(value):
     return "Muy Alta"
 
 
-def format_cluster_description(raw_desc):
+def parse_cluster_description(raw_desc):
     lines = raw_desc.split("\n")
-    summary_lines = []
+    summary_data = {}
     var_blocks = []
     current_block = []
     in_variables_section = False
@@ -215,18 +216,17 @@ def format_cluster_description(raw_desc):
                 try:
                     incremento = float(stripped.split(":", 1)[1].strip())
                     diff_percent = (incremento - 1.0) * 100
-                    color = get_color_for_increment(incremento - 1.0)
-                    summary_lines.append(
-                        f'<span style="color:{color};font-weight:bold;">'
-                        f"Incremento: {diff_percent:+.0f}%</span>"
-                    )
+                    summary_data["incremento"] = {
+                        "text": f"{diff_percent:+.0f}%",
+                        "color": get_color_for_increment(incremento - 1.0),
+                    }
                 except Exception:
-                    summary_lines.append(stripped)
+                    summary_data["incremento"] = {"text": stripped, "color": "#666666"}
             elif stripped.startswith("- Probabilidad:"):
-                summary_lines.append(f"Probabilidad: {stripped.split(':', 1)[1].strip()}")
+                summary_data["probabilidad"] = stripped.split(":", 1)[1].strip()
             elif stripped.startswith("- Nivel de confianza"):
                 conf_val = stripped.split(":", 1)[1].strip()
-                summary_lines.append(f"Confianza {map_confidence(conf_val)}")
+                summary_data["confianza"] = map_confidence(conf_val)
             continue
 
         if stripped.startswith("- Variable:"):
@@ -239,7 +239,7 @@ def format_cluster_description(raw_desc):
     if current_block:
         var_blocks.append(current_block)
 
-    variables_lines = []
+    variables = []
     for block in var_blocks:
         var_info = {}
         extra_props = []
@@ -264,15 +264,107 @@ def format_cluster_description(raw_desc):
                     extra_props.append(f"Recursos: {val}")
 
         if "descripcion" in var_info and "categorias" in var_info:
-            variables_lines.append(f"- {var_info['descripcion']} -> {var_info['categorias']}")
-            for prop in extra_props:
-                variables_lines.append(f"    - {prop}")
+            variables.append(
+                {
+                    "descripcion": var_info["descripcion"],
+                    "categorias": var_info["categorias"],
+                    "extras": extra_props,
+                }
+            )
 
-    return "\n".join(summary_lines) + "\n\n" + "\n\n".join(variables_lines)
+    return {"summary": summary_data, "variables": variables}
+
+
+def normalize_variable_signature(variables):
+    signature_items = []
+    for item in variables:
+        signature_items.append(
+            (
+                item.get("descripcion", ""),
+                item.get("categorias", ""),
+                tuple(item.get("extras", [])),
+            )
+        )
+    return tuple(signature_items)
+
+
+def group_clusters_by_variables(parsed_clusters):
+    grouped = {}
+    for cluster_name, cluster_data in parsed_clusters.items():
+        signature = normalize_variable_signature(cluster_data.get("variables", []))
+        if signature not in grouped:
+            grouped[signature] = {
+                "variables": cluster_data.get("variables", []),
+                "scenarios": [],
+            }
+        grouped[signature]["scenarios"].append(
+            {
+                "nombre": str(cluster_name),
+                "summary": cluster_data.get("summary", {}),
+            }
+        )
+    return list(grouped.values())
+
+
+def render_variables_column(variables):
+    if not variables:
+        return "<p style='margin:0;color:#6b7280'>No se encontraron variables clave.</p>"
+
+    variables_html = ""
+    for item in variables:
+        extras_html = "".join(
+            f"<li style='margin-top:4px;color:#4b5563;font-size:0.9rem'>{extra}</li>"
+            for extra in item.get("extras", [])
+        )
+        variables_html += (
+            "<li style='margin-bottom:10px'>"
+            f"<strong>{item.get('descripcion', 'Variable')}</strong><br>"
+            f"<span style='color:#374151'>{item.get('categorias', 'N/D')}</span>"
+            f"<ul style='margin-top:5px'>{extras_html}</ul>"
+            "</li>"
+        )
+    return f"<ul style='margin:0 0 0 18px;padding:0'>{variables_html}</ul>"
+
+
+def format_grouped_scenarios_card(group_idx, group_data):
+    scenario_cols = ""
+    for scenario in group_data.get("scenarios", []):
+        summary = scenario.get("summary", {})
+        incremento = summary.get("incremento", {"text": "N/D", "color": "#666666"})
+        probabilidad = summary.get("probabilidad", "N/D")
+        confianza = summary.get("confianza", "N/D")
+
+        scenario_cols += f"""
+        <div style="min-width:160px;border-left:1px solid #e5e7eb;padding-left:12px;padding-right:8px">
+          <div style="font-size:0.82rem;color:#6b7280;margin-bottom:8px">Escenario {scenario.get('nombre')}</div>
+          <div style="font-size:0.82rem;color:#6b7280">Incremento</div>
+          <div style="font-weight:700;color:{incremento.get('color', '#666666')};margin-bottom:8px">{incremento.get('text', 'N/D')}</div>
+          <div style="font-size:0.82rem;color:#6b7280">Probabilidad</div>
+          <div style="font-weight:700;margin-bottom:8px">{probabilidad}</div>
+          <div style="font-size:0.82rem;color:#6b7280">Confianza</div>
+          <div style="font-weight:700">{confianza}</div>
+        </div>
+        """
+
+    return dedent(
+        f"""
+        <div style="border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:14px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+          <div style="font-weight:700;margin-bottom:10px;color:#111827">Grupo de Variables Clave #{group_idx}</div>
+          <div style="display:flex;align-items:flex-start;gap:12px;overflow-x:auto">
+            <div style="min-width:420px;max-width:520px;padding-right:10px">
+              <div style="font-size:0.86rem;color:#6b7280;margin-bottom:6px">Variables Clave (identificador)</div>
+              {render_variables_column(group_data.get('variables', []))}
+            </div>
+            {scenario_cols}
+          </div>
+        </div>
+        """
+    ).strip()
 
 
 def format_all_clusters(resultado):
-    return {cluster_id: format_cluster_description(desc) for cluster_id, desc in resultado.items()}
+    parsed_clusters = {cluster_id: parse_cluster_description(desc) for cluster_id, desc in resultado.items()}
+    return group_clusters_by_variables(parsed_clusters)
 
 
 def filter_cluster_results(df):
@@ -344,5 +436,9 @@ def show_section4():
     )
 
     st.write("### Resultados:")
-    for _, desc in format_all_clusters(resultado).items():
-        st.markdown(desc, unsafe_allow_html=True)
+    grouped_results = format_all_clusters(resultado)
+    for group_idx, group_data in enumerate(grouped_results, start=1):
+        st.markdown(
+            format_grouped_scenarios_card(group_idx, group_data),
+            unsafe_allow_html=True,
+        )
