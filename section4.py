@@ -61,17 +61,19 @@ def generar_lista_preguntas(data_desc):
 
 def preguntar_opciones_streamlit(i, variable, descripcion, opciones):
     key_uid = f"opt_{variable}_{i}"
-    st.write(f"**{variable}**: {descripcion}")
+    st.markdown(f"**{descripcion}**")
+    st.caption(f"Variable: {variable}")
     lista = [f"{k} - {v}" for k, v in opciones.items()]
-    sel = st.selectbox("", lista, key=key_uid, label_visibility="collapsed")
+    sel = st.selectbox("Selecciona una opción", lista, key=key_uid)
     cod = int(sel.split(" - ")[0])
     return cod, opciones[cod]
 
 
 def preguntar_numero_streamlit(i, variable, descripcion):
     key_uid = f"num_{variable}_{i}"
-    st.write(f"**{variable}**: {descripcion}")
-    val = st.number_input("", value=0.0, step=1.0, key=key_uid, label_visibility="collapsed")
+    st.markdown(f"**{descripcion}**")
+    st.caption(f"Variable: {variable}")
+    val = st.number_input("Ingresa un valor", value=0.0, step=1.0, key=key_uid)
     return val, str(val)
 
 
@@ -308,7 +310,7 @@ def group_clusters_by_variables(parsed_clusters):
 
 def render_variables_column(variables):
     if not variables:
-        return "<p style='margin:0;color:#6b7280'>No se encontraron variables clave.</p>"
+        return "<p class='app-meta' style='margin:0'>No se encontraron variables clave.</p>"
 
     variables_html = ""
     for item in variables:
@@ -335,24 +337,24 @@ def format_grouped_scenarios_card(group_idx, group_data):
         confianza = summary.get("confianza", "N/D")
 
         scenario_cols += f"""
-        <div style="min-width:160px;border-left:1px solid #e5e7eb;padding-left:12px;padding-right:8px">
-          <div style="font-size:0.82rem;color:#6b7280;margin-bottom:8px">Escenario {scenario.get('nombre')}</div>
-          <div style="font-size:0.82rem;color:#6b7280">Incremento</div>
+        <div style="min-width:170px;border-left:1px solid #e5e7eb;padding-left:12px;padding-right:8px">
+          <div class="app-meta">Escenario {scenario.get('nombre')}</div>
+          <div class="app-meta" style="margin-bottom:2px">Incremento</div>
           <div style="font-weight:700;color:{incremento.get('color', '#666666')};margin-bottom:8px">{incremento.get('text', 'N/D')}</div>
-          <div style="font-size:0.82rem;color:#6b7280">Probabilidad</div>
+          <div class="app-meta" style="margin-bottom:2px">Probabilidad</div>
           <div style="font-weight:700;margin-bottom:8px">{probabilidad}</div>
-          <div style="font-size:0.82rem;color:#6b7280">Confianza</div>
+          <div class="app-meta" style="margin-bottom:2px">Confianza</div>
           <div style="font-weight:700">{confianza}</div>
         </div>
         """
 
     return dedent(
         f"""
-        <div style="border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:14px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
-          <div style="font-weight:700;margin-bottom:10px;color:#111827">Grupo de Variables Clave #{group_idx}</div>
+        <div class="app-card">
+          <h4>Grupo de Variables Clave #{group_idx}</h4>
           <div style="display:flex;align-items:flex-start;gap:12px;overflow-x:auto">
             <div style="min-width:420px;max-width:520px;padding-right:10px">
-              <div style="font-size:0.86rem;color:#6b7280;margin-bottom:6px">Variables Clave (identificador)</div>
+              <div class="app-meta">Variables clave (identificador)</div>
               {render_variables_column(group_data.get('variables', []))}
             </div>
             {scenario_cols}

@@ -54,14 +54,14 @@ def show_section2():
     colA, colB = st.columns(2)
     with colA:
         origin_multisel = st.multiselect(
-            "",
+            "Clase de origen",
             options=list(CLASS_TO_QUINTILES.keys()),
             default=st.session_state["origin_default"],
             key="origin_multisel"
         )
     with colB:
         dest_multisel = st.multiselect(
-            "",
+            "Clase de destino",
             options=list(CLASS_TO_QUINTILES.keys()),
             default=st.session_state["dest_default"],
             key="dest_multisel"
@@ -142,10 +142,9 @@ def show_section2():
         st.markdown(
             """
             <a href='https://github.com/jcval94chat/movilidad_social' target='_blank'
-               style='text-decoration:none;'>
-                <img src='https://cdn-icons-png.flaticon.com/512/1384/1384060.png'
-                     height='25' style='vertical-align:middle;' />
-                <span style='font-size:14px; margin-left:6px;'>Repositorio</span>
+               class='app-icon-link'>
+                <span class='icon'>↗</span>
+                <span>Repositorio</span>
             </a>
             """,
             unsafe_allow_html=True
@@ -154,10 +153,9 @@ def show_section2():
         st.markdown(
             """
             <a href='https://github.com/jcval94chat/movilidad_social' target='_blank'
-               style='text-decoration:none;'>
-                <img src='https://cdn-icons-png.flaticon.com/512/1384/1384063.png'
-                     height='25' style='vertical-align:middle;' />
-                <span style='font-size:14px; margin-left:6px;'>Repositorio</span>
+               class='app-icon-link'>
+                <span class='icon'>↗</span>
+                <span>Repositorio</span>
             </a>
             """,
             unsafe_allow_html=True
