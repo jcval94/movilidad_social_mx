@@ -10,7 +10,7 @@
 
 **Diseñado para dos públicos al mismo tiempo:**
 
-🧑‍⚖️ **Jurados y evaluadores técnicos** → evidencia, metodología y trazabilidad.  
+🧠 **Personas técnicas (investigación, análisis y política pública)** → evidencia, metodología y trazabilidad.  
 👨‍👩‍👧‍👦 **Público general** → explicaciones claras, visuales y accionables.
 
 </div>
@@ -62,7 +62,7 @@ Con esta app, cualquier persona puede explorar patrones de movilidad y comparar 
 Muchas herramientas de análisis social son difíciles de usar fuera del ámbito técnico. Esta plataforma cierra esa brecha al ofrecer:
 
 - ✅ **Interfaz intuitiva** para usuarios no especialistas.
-- ✅ **Rigor analítico** para evaluación técnica.
+- ✅ **Rigor analítico** para análisis técnico y toma de decisiones.
 - ✅ **Comparaciones claras** entre filtros, cohortes y objetivos de movilidad.
 - ✅ **Resultados interpretables** (no sólo métricas abstractas).
 
@@ -72,7 +72,7 @@ Muchas herramientas de análisis social son difíciles de usar fuera del ámbito
 
 ### Enfoque dual: “impacto + entendibilidad”
 
-| Elemento | Valor para jurado técnico | Valor para público general |
+| Elemento | Valor para personas técnicas | Valor para público general |
 |---|---|---|
 | Visualizaciones comparativas | Permiten contrastes entre base y subgrupos | Se entienden en segundos |
 | Series por cohorte | Muestran tendencias intergeneracionales | Ayudan a “contar historias” de cambio |
