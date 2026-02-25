@@ -5,6 +5,17 @@ import pandas as pd
 import plotly.express as px
 
 from data_utils import load_and_process_data
+from config import VAR_CATEGORIES, POSSIBLE_VARS
+
+FILTER_LABELS = {
+    "generation": "Generación",
+    "sex": "Sexo",
+    "education": "Educación"
+}
+
+def pretty_label(var_name):
+    return FILTER_LABELS.get(var_name, var_name.capitalize())
+
 
 # Diccionario para mapear clases a quintiles
 CLASS_TO_QUINTILES = {
@@ -41,40 +52,80 @@ def show_section2():
     df = load_and_process_data()
     df = add_cohort_5y_column(df, step=3)
 
-    # 2) Filtro excepto generation
-    df_filtered = apply_filter_except_generation(df)
+    # 2) Filtros en bloques plegables + controles claros
+    if 'selected_vars' not in st.session_state:
+        st.session_state['selected_vars'] = []
+    for var in st.session_state['selected_vars']:
+        if f"cats_{var}" not in st.session_state:
+            st.session_state[f"cats_{var}"] = []
 
-    # 3) Controles Origen y Destino (multiselect)
-    #    Con valores por defecto si no existen en session_state
+    with st.sidebar.expander("Filtro principal", expanded=False):
+        st.session_state['selected_vars'] = st.multiselect(
+            "Variables (máximo 3)",
+            options=POSSIBLE_VARS,
+            default=st.session_state['selected_vars'],
+            max_selections=3,
+            help="Estos filtros se aplican también en esta sección."
+        )
+        if st.session_state['selected_vars']:
+            st.caption(f"✅ {len(st.session_state['selected_vars'])} variable(s) activa(s)")
+        else:
+            st.caption("ℹ️ Sin filtros activos.")
+
+        for var in st.session_state['selected_vars']:
+            options = VAR_CATEGORIES.get(var, [])
+            current = [str(x) for x in st.session_state.get(f"cats_{var}", [])]
+            st.session_state[f"cats_{var}"] = st.multiselect(
+                f"{pretty_label(var)}",
+                options=options,
+                default=[v for v in current if v in options],
+                placeholder="Selecciona categorías"
+            )
+
+    with st.sidebar.expander("Comparación base", expanded=False):
+        st.caption("Esta sección usa el filtro principal como referencia.")
+        st.markdown("- **Base:** población filtrada por selección principal")
+        st.markdown("- **Comparación:** origen y destino elegidos")
+
+    # Controles Origen y Destino
     if "origin_default" not in st.session_state:
         st.session_state["origin_default"] = ["Media Alta"]
     if "dest_default" not in st.session_state:
         st.session_state["dest_default"] = ["Alta"]
 
-    colA, colB = st.columns(2)
-    with colA:
-        origin_multisel = st.multiselect(
-            "",
-            options=list(CLASS_TO_QUINTILES.keys()),
-            default=st.session_state["origin_default"],
-            key="origin_multisel"
-        )
-    with colB:
-        dest_multisel = st.multiselect(
-            "",
-            options=list(CLASS_TO_QUINTILES.keys()),
-            default=st.session_state["dest_default"],
-            key="dest_multisel"
-        )
+    with st.sidebar.expander("Opciones avanzadas", expanded=True):
+        colA, colB = st.columns(2)
+        with colA:
+            origin_multisel = st.multiselect(
+                "Clase de origen",
+                options=list(CLASS_TO_QUINTILES.keys()),
+                default=st.session_state["origin_default"],
+                key="origin_multisel"
+            )
+        with colB:
+            dest_multisel = st.multiselect(
+                "Clase de destino",
+                options=list(CLASS_TO_QUINTILES.keys()),
+                default=st.session_state["dest_default"],
+                key="dest_multisel"
+            )
+
+        if origin_multisel or dest_multisel:
+            st.caption(f"🔖 Activo: {', '.join(origin_multisel or ['Sin origen'])} → {', '.join(dest_multisel or ['Sin destino'])}")
+        else:
+            st.caption("ℹ️ Selecciona origen y destino para ver resultados.")
 
     # Guardamos la última selección
     st.session_state["origin_default"] = origin_multisel
     st.session_state["dest_default"]   = dest_multisel
 
-    # 4) Armamos el "group_label" para color (multilíneas si hay más filtros)
+    # 4) Aplicar filtro principal actualizado
+    df_filtered = apply_filter_except_generation(df)
+
+    # 5) Armamos el "group_label" para color (multilíneas si hay más filtros)
     color_column = create_label_column(df_filtered)
 
-    # 5) Filtramos quienes estaban en 'Origen'
+    # 6) Filtramos quienes estaban en 'Origen'
     origin_quintiles = set()
     for cls in origin_multisel:
         origin_quintiles.update(CLASS_TO_QUINTILES[cls])
@@ -87,7 +138,7 @@ def show_section2():
 
     df_origin = df_filtered[df_filtered['in_origin'] == True].copy()
 
-    # 6) Group by cohorte + color_column
+    # 7) Group by cohorte + color_column
     grouped = df_origin.groupby(['cohort_5y', color_column], dropna=False)
     n_origin = grouped.size().rename("n_origin")
     n_dest   = grouped['in_dest'].sum().rename("n_dest")
@@ -100,15 +151,15 @@ def show_section2():
     df_stats.sort_values('cohort_start', inplace=True)
     df_stats.dropna(subset=['cohort_start'], inplace=True)
 
-    # 7) Gráfica
+    # 8) Gráfica
     if not origin_multisel:
-        origin_multisel = ["(Ninguno)"]
+        origin_multisel = ["Sin origen"]
     if not dest_multisel:
-        dest_multisel = ["(Ninguno)"]
+        dest_multisel = ["Sin destino"]
     origin_str = ", ".join(origin_multisel)
     dest_str = ", ".join(dest_multisel)
 
-    chart_title = f"Porcentaje de {origin_str} que se mueven a {dest_str}"
+    chart_title = f"Movilidad de {origin_str} hacia {dest_str}"
 
     fig = px.line(
         df_stats,
@@ -119,8 +170,8 @@ def show_section2():
         title=chart_title,
         labels={
             'cohort_start': "Año de nacimiento",
-            'pct_dest': "Probabilidad de cambio",
-            color_column: "Categoría"
+            'pct_dest': "Probabilidad (%)",
+            color_column: "Grupo"
         }
         # Podrías definir color_discrete_sequence para "igualar" la paleta
         # color_discrete_sequence=["gray","skyblue","salmon","green","red",...]
@@ -128,14 +179,17 @@ def show_section2():
     fig.update_layout(
         width=800,
         height=600,
-        legend_title_text="Categoría",
+        legend_title_text="Grupo",
     )
     fig.update_xaxes(showgrid=False)
     fig.update_yaxes(showgrid=False)
 
-    st.plotly_chart(fig, use_container_width=True)
+    if df_stats.empty:
+        st.info("No hay datos para la combinación elegida. Ajusta filtros o selecciona otras clases.")
+    else:
+        st.plotly_chart(fig, use_container_width=True)
 
-    # 8) Logos finales
+    # 9) Logos finales
     st.markdown("---")
     c1, c2 = st.columns([0.5, 0.5])
     with c1:
@@ -188,7 +242,7 @@ def apply_filter_except_generation(df):
             continue
         chosen_cats = st.session_state.get(f"cats_{var}", [])
         if chosen_cats:
-            dff = dff[dff[var].isin(chosen_cats)]
+            dff = dff[dff[var].astype(str).isin([str(c) for c in chosen_cats])]
     return dff
 
 def create_label_column(df):
@@ -196,17 +250,17 @@ def create_label_column(df):
     Combina las variables seleccionadas (except generation) para 'color'.
     """
     if 'selected_vars' not in st.session_state:
-        df['group_label'] = "All"
+        df['group_label'] = "Total"
         return 'group_label'
     chosen_vars = [v for v in st.session_state['selected_vars'] if v != 'generation']
     if not chosen_vars:
-        df['group_label'] = "All"
+        df['group_label'] = "Total"
         return 'group_label'
 
     def make_label(row):
         parts = []
         for v in chosen_vars:
-            parts.append(f"{v}={row[v]}")
+            parts.append(f"{v}: {row[v]}")
         return " | ".join(parts)
 
     df['group_label'] = df.apply(make_label, axis=1)

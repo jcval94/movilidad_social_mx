@@ -9,6 +9,16 @@ from plotly.subplots import make_subplots
 from data_utils import load_and_process_data
 from config import VAR_CATEGORIES, POSSIBLE_VARS
 
+FILTER_LABELS = {
+    "generation": "Generación",
+    "sex": "Sexo",
+    "education": "Educación"
+}
+
+def pretty_label(var_name):
+    return FILTER_LABELS.get(var_name, var_name.capitalize())
+
+
 def random_filter_selection():
     """
     Elige aleatoriamente 2 variables y 1..3 categorías de cada una (para Sección 1).
@@ -45,21 +55,35 @@ def show_section1():
     # Barra lateral: (Ya tenemos los botones en main.py)
     # ----------------
 
-    # 1) Selección de variables
-    st.session_state['selected_vars'] = st.sidebar.multiselect(
-        "Selecciona las variables (máximo 3)",
-        options=POSSIBLE_VARS,
-        default=st.session_state['selected_vars'],
-        max_selections=3
-    )
-
-    for var in st.session_state['selected_vars']:
-        cat_options = VAR_CATEGORIES.get(var, [])
-        st.session_state[f"cats_{var}"] = st.sidebar.multiselect(
-            f"{var.capitalize()}:",
-            cat_options,
-            default=st.session_state[f"cats_{var}"]
+    # 1) Filtros organizados en bloques plegables
+    with st.sidebar.expander("Filtro principal", expanded=True):
+        st.session_state['selected_vars'] = st.multiselect(
+            "Variables (máximo 3)",
+            options=POSSIBLE_VARS,
+            default=st.session_state['selected_vars'],
+            max_selections=3,
+            help="Elige hasta 3 dimensiones para segmentar resultados."
         )
+
+        if st.session_state['selected_vars']:
+            st.caption(f"✅ {len(st.session_state['selected_vars'])} variable(s) activa(s)")
+        else:
+            st.caption("ℹ️ No hay variables seleccionadas todavía.")
+
+        for var in st.session_state['selected_vars']:
+            cat_options = VAR_CATEGORIES.get(var, [])
+            st.session_state[f"cats_{var}"] = st.multiselect(
+                f"{pretty_label(var)}",
+                cat_options,
+                default=st.session_state[f"cats_{var}"],
+                placeholder="Selecciona una o más categorías"
+            )
+
+            selected_count = len(st.session_state[f"cats_{var}"])
+            if selected_count:
+                st.caption(f"🔹 {pretty_label(var)}: {selected_count} categoría(s) seleccionada(s)")
+            else:
+                st.caption(f"▫️ {pretty_label(var)}: sin categorías seleccionadas (usa todas)")
 
     # 2) Cargar datos
     df = load_and_process_data()
@@ -67,14 +91,23 @@ def show_section1():
     # 3) Filtro principal
     df_filter = apply_dynamic_filter(df)
 
-    # 4) Checkbox "Cambiar base"
-    st.sidebar.markdown("---")
-    cambiar_base = st.sidebar.checkbox("Cambiar base", value=False)
-    if cambiar_base:
-        show_base_filters(df)
-        df_base = st.session_state.get('df_base', df)
-    else:
-        df_base = df
+    with st.sidebar.expander("Comparación base", expanded=False):
+        cambiar_base = st.checkbox("Activar comparación contra base", value=False)
+        if cambiar_base:
+            show_base_filters(df)
+            df_base = st.session_state.get('df_base', df)
+            st.caption("✅ Comparación activa")
+        else:
+            df_base = df
+            st.caption("ℹ️ Usando base general")
+
+    with st.sidebar.expander("Opciones avanzadas", expanded=False):
+        st.caption("Vista rápida del estado de filtros:")
+        if main_filters_selected(st.session_state['selected_vars']):
+            st.markdown("- **Principal:** activo")
+        else:
+            st.markdown("- **Principal:** sin selección")
+        st.markdown(f"- **Comparación base:** {'activa' if cambiar_base else 'apagada'}")
 
     # 5) Construir el título a partir de los filtros
     filter_desc = describe_filter_selection(st.session_state['selected_vars'], prefix="Filtro: ")
@@ -137,17 +170,23 @@ def show_base_filters(df):
         if key_base_cats not in st.session_state:
             st.session_state[key_base_cats] = []
 
-    st.sidebar.markdown("**Base personalizada**:")
-    st.session_state['base_selected_vars'] = st.sidebar.multiselect(
-        "Variables base:",
+    st.markdown("**Base personalizada**")
+    st.session_state['base_selected_vars'] = st.multiselect(
+        "Variables para la base",
         options=POSSIBLE_VARS,
         default=st.session_state['base_selected_vars'],
         max_selections=3
     )
+
+    if st.session_state['base_selected_vars']:
+        st.caption(f"✅ {len(st.session_state['base_selected_vars'])} variable(s) de base activa(s)")
+    else:
+        st.caption("ℹ️ Base sin filtros específicos (equivale a base general).")
+
     for var in st.session_state['base_selected_vars']:
         cat_options = VAR_CATEGORIES.get(var, [])
-        st.session_state[f"base_cats_{var}"] = st.sidebar.multiselect(
-            f"{var.capitalize()} (base):",
+        st.session_state[f"base_cats_{var}"] = st.multiselect(
+            f"{pretty_label(var)} (base)",
             cat_options,
             default=st.session_state[f"base_cats_{var}"]
         )
@@ -165,12 +204,18 @@ def describe_filter_selection(selected_vars, prefix="", base=False):
         chosen_cats = st.session_state.get(f"{'base_cats_' if base else 'cats_'}{var}", [])
         if chosen_cats:
             cats_str = ", ".join(chosen_cats)
-            parts.append(f"{var}={cats_str}")
+            parts.append(f"{pretty_label(var)}={cats_str}")
 
     if parts:
         return prefix + "[" + "; ".join(parts) + "]"
     else:
         return prefix + "(Sin selección)"
+
+def main_filters_selected(selected_vars):
+    for var in selected_vars:
+        if st.session_state.get(f"cats_{var}", []):
+            return True
+    return False
 
 def plot_mobility_interactive(df_filter, df_base):
     """
