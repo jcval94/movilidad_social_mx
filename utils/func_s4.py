@@ -186,7 +186,7 @@ def construir_descripciones_cluster(
                         cat_in_range.append(f"{val}={etiq}")
 
                 if cat_in_range:
-                    subtexto.append(f"    - {txt_cat}: {', '.join(cat_in_range)}")
+                    subtexto.append(f"    - {txt_cat}: {' | '.join(cat_in_range)}")
                 else:
                     subtexto.append(f"    - {txt_no_cat}")
 
@@ -212,4 +212,3 @@ def construir_descripciones_cluster(
         descripciones_por_cluster[idx] = "\n".join(texto)
 
     return descripciones_por_cluster
-
