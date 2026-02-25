@@ -249,11 +249,17 @@ def parse_cluster_description(raw_desc):
             if line.startswith("- Descripción:"):
                 var_info["descripcion"] = line.split(":", 1)[1].strip()
             elif line.startswith("- Categorías en rango:"):
+                categories_raw = line.split(":", 1)[1].strip()
+                if "|" in categories_raw:
+                    parts = categories_raw.split("|")
+                else:
+                    parts = categories_raw.split(",")
+
                 cat_values = []
-                for part in line.split(":", 1)[1].strip().split(","):
+                for part in parts:
                     if "=" in part:
                         cat_values.append(part.split("=", 1)[1].strip())
-                var_info["categorias"] = ", ".join(cat_values)
+                var_info["categorias"] = " | ".join(cat_values)
             elif line.startswith("- ¿Puedo cambiarlo yo?:"):
                 val = line.split(":", 1)[1].strip()
                 if val.lower() != "no_aplica":
