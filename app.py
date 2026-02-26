@@ -150,18 +150,19 @@ def main():
     # -----------------------------------------------------------------
     # TABS
     # -----------------------------------------------------------------
-    tab1, tab2, tab3, tab4 = st.tabs(["Movilidad", "Evolución Temporal", 
-                                      "¿Qué clase soy?",
-                                      "Pobre a Rico"])
+    tab1, tab2, tab3, tab4 = st.tabs(["¿Qué clase soy?",
+                                      "Pobre a Rico",
+                                      "Movilidad",
+                                      "Evolución Temporal"])
 
     with tab1:
-        show_section1()
-    with tab2:
-        show_section2()
-    with tab3:
         show_section3()
-    with tab4:
+    with tab2:
         show_section4()
+    with tab3:
+        show_section1()
+    with tab4:
+        show_section2()
 
 if __name__ == "__main__":
     main()
