@@ -163,7 +163,7 @@ def show_section3():
                     <h3 class="intro-title">¿Qué clase soy en México?</h3>
                     <div class="intro-divider"></div>
                     <p>
-                        En México, la movilidad social es como un "elevador descompuesto": el lugar donde naces determina casi por completo a dónde llegarás. Casi la mitad de tu éxito económico depende de factores que no elegiste (como tu código postal, el dinero de tus padres o tu tono de piel), y lo más crudo es que 74 de cada 100 personas que nacen en la pobreza se quedan ahí toda su vida. En resumen, el esfuerzo individual rara vez logra vencer a las barreras de un sistema donde, lamentablemente, origen sigue siendo destino.
+                        En México, la movilidad social es como un "elevador descompuesto": <strong>el lugar donde naces determina casi por completo a dónde llegarás</strong>. <strong>Casi la mitad de tu éxito económico depende de factores que no elegiste</strong> (como tu código postal, el dinero de tus padres o tu tono de piel), y lo más crudo es que <strong>74 de cada 100 personas que nacen en la pobreza se quedan ahí toda su vida</strong>. En resumen, <strong>el esfuerzo individual rara vez logra vencer a las barreras de un sistema donde, lamentablemente, origen sigue siendo destino</strong>.
                     </p>
                     <p>
                         Este proyecto busca darte las herramientas a través de la IA, dándote un diagnóstico acorde a tu contexto. Puedes empezar primero conociéndote y revisando en las otras páginas qué hacer para superarte.
