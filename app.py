@@ -121,47 +121,52 @@ def main():
     st.set_page_config(layout="wide")
     apply_global_styles()
 
+    sections = [
+        "¿Qué clase soy?",
+        "Pobre a Rico",
+        "Movilidad",
+        "Evolución Temporal",
+    ]
+    selected_section = st.radio(
+        "Secciones",
+        options=sections,
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+
+    show_sidebar_filters = selected_section in {"Movilidad", "Evolución Temporal"}
+
     # -----------------------------------------------------------------
     # BARRA LATERAL (parte superior): Botones Refresh y Random
     # -----------------------------------------------------------------
-    col_btn1, col_btn2 = st.sidebar.columns([0.5, 0.5])
-    with col_btn1:
-        if st.button("⟳ Refresh", key="refresh_main", help="Recargar la app"):
-            # Limpia todo el session_state y recarga
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
+    if show_sidebar_filters:
+        col_btn1, col_btn2 = st.sidebar.columns([0.5, 0.5])
+        with col_btn1:
+            if st.button("⟳ Refresh", key="refresh_main", help="Recargar la app"):
+                # Limpia todo el session_state y recarga
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
 
-    with col_btn2:
-        if st.button("🎲 Random", key="random_main", help="Selección aleatoria"):
-            # Aplica la lógica de random a Sección 1 (Movilidad)
-            random_section1()
-            # Aplica la lógica de random a Sección 2 (Evolución Temporal)
-            random_section2()
+        with col_btn2:
+            if st.button("🎲 Random", key="random_main", help="Selección aleatoria"):
+                # Aplica la lógica de random a Sección 1 (Movilidad)
+                random_section1()
+                # Aplica la lógica de random a Sección 2 (Evolución Temporal)
+                random_section2()
 
-            random_section3()
-            st.rerun()
+                random_section3()
+                st.rerun()
 
-    # -----------------------------------------------------------------
-    # Título del Filtro principal (bajo los botones)
-    # -----------------------------------------------------------------
-    st.sidebar.subheader("Filtro actual (filtro principal):")
+        st.sidebar.subheader("Filtro actual (filtro principal):")
 
-    # -----------------------------------------------------------------
-    # TABS
-    # -----------------------------------------------------------------
-    tab1, tab2, tab3, tab4 = st.tabs(["¿Qué clase soy?",
-                                      "Pobre a Rico",
-                                      "Movilidad",
-                                      "Evolución Temporal"])
-
-    with tab1:
+    if selected_section == "¿Qué clase soy?":
         show_section3()
-    with tab2:
+    elif selected_section == "Pobre a Rico":
         show_section4()
-    with tab3:
+    elif selected_section == "Movilidad":
         show_section1()
-    with tab4:
+    else:
         show_section2()
 
 if __name__ == "__main__":
