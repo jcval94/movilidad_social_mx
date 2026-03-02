@@ -9,6 +9,8 @@ from plotly.subplots import make_subplots
 from data_utils import load_and_process_data
 from config import VAR_CATEGORIES, POSSIBLE_VARS
 
+SMALL_SAMPLE_THRESHOLD = 30
+
 def random_filter_selection():
     """
     Elige aleatoriamente 2 variables y 1..3 categorías de cada una (para Sección 1).
@@ -85,11 +87,23 @@ def show_section1():
         main_title = filter_desc or "Sin Filtro (Base General)"
 
     # 6) Plot interactivo con Plotly
-    fig = plot_mobility_interactive(df_filter, df_base)
+    fig, sample_sizes = plot_mobility_interactive(df_filter, df_base)
 
     # Colocamos el título principal arriba de la figura
     # st.markdown("## Movilidad Socioeconómica Q1 vs Q5")
     st.write(f"*{main_title}*")
+
+    st.caption(
+        "Tamaño de muestra (filtro): "
+        f"Origen Clase Baja n={sample_sizes['q1_filter_n']}, "
+        f"Origen Clase Alta n={sample_sizes['q5_filter_n']}"
+    )
+
+    if min(sample_sizes['q1_filter_n'], sample_sizes['q5_filter_n']) < SMALL_SAMPLE_THRESHOLD:
+        st.warning(
+            "⚠️ Muestra chica en al menos uno de los grupos filtrados. "
+            "Interpretar con cautela."
+        )
 
     st.plotly_chart(fig, use_container_width=True)
 
@@ -170,6 +184,22 @@ def describe_filter_selection(selected_vars, prefix="", base=False):
     else:
         return prefix + "(Sin selección)"
 
+def wilson_ci(successes, n, z=1.96):
+    if n <= 0:
+        return 0.0, 0.0
+    p = successes / n
+    denom = 1 + z**2 / n
+    center = (p + z**2 / (2 * n)) / denom
+    margin = (
+        z
+        * np.sqrt((p * (1 - p) / n) + (z**2 / (4 * n**2)))
+        / denom
+    )
+    lower = max(0.0, center - margin)
+    upper = min(1.0, center + margin)
+    return lower * 100, upper * 100
+
+
 def plot_mobility_interactive(df_filter, df_base):
     """
     Crea 2 subplots: Origen Clase Baja (Q1) y Origen Clase Alta (Q5),
@@ -208,6 +238,25 @@ def plot_mobility_interactive(df_filter, df_base):
     x_q1 = list(q1_dist_base.index.union(q1_dist_filter.index))
     x_q5 = list(q5_dist_base.index.union(q5_dist_filter.index))
 
+    q1_filter_n = len(q1_filter)
+    q5_filter_n = len(q5_filter)
+
+    q1_err_plus, q1_err_minus = [], []
+    for k in x_q1:
+        successes = int((q1_filter['actualmente_quintile'] == k).sum())
+        val = q1_dist_filter.get(k, 0)
+        low, up = wilson_ci(successes, q1_filter_n)
+        q1_err_plus.append(max(0, up - val))
+        q1_err_minus.append(max(0, val - low))
+
+    q5_err_plus, q5_err_minus = [], []
+    for k in x_q5:
+        successes = int((q5_filter['actualmente_quintile'] == k).sum())
+        val = q5_dist_filter.get(k, 0)
+        low, up = wilson_ci(successes, q5_filter_n)
+        q5_err_plus.append(max(0, up - val))
+        q5_err_minus.append(max(0, val - low))
+
     fig = make_subplots(rows=1, cols=2, shared_yaxes=True,
                         subplot_titles=("Origen Clase Baja", "Origen Clase Alta"))
 
@@ -227,7 +276,15 @@ def plot_mobility_interactive(df_filter, df_base):
             x=[quintil_labels.get(k, str(k)) for k in x_q1],
             y=[q1_dist_filter.get(k, 0) for k in x_q1],
             name="Filtro",
-            marker_color="skyblue"
+            marker_color="skyblue",
+            error_y=dict(
+                type='data',
+                symmetric=False,
+                array=q1_err_plus,
+                arrayminus=q1_err_minus,
+                visible=True,
+                color='navy'
+            )
         ),
         row=1, col=1
     )
@@ -248,7 +305,15 @@ def plot_mobility_interactive(df_filter, df_base):
             x=[quintil_labels.get(k, str(k)) for k in x_q5],
             y=[q5_dist_filter.get(k, 0) for k in x_q5],
             name="Filtro",
-            marker_color="salmon"
+            marker_color="salmon",
+            error_y=dict(
+                type='data',
+                symmetric=False,
+                array=q5_err_plus,
+                arrayminus=q5_err_minus,
+                visible=True,
+                color='darkred'
+            )
         ),
         row=1, col=2
     )
@@ -303,4 +368,9 @@ def plot_mobility_interactive(df_filter, df_base):
             row=1, col=2
         )
 
-    return fig
+    sample_sizes = {
+        'q1_filter_n': q1_filter_n,
+        'q5_filter_n': q5_filter_n,
+    }
+
+    return fig, sample_sizes
