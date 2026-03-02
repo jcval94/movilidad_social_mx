@@ -48,6 +48,16 @@ def apply_global_styles():
             cursor: not-allowed;
         }
 
+        .stFormSubmitButton > button {
+            background-color: #7c3aed;
+            color: #ffffff;
+            border-color: #7c3aed;
+        }
+        .stFormSubmitButton > button:hover {
+            background-color: #6d28d9;
+            border-color: #6d28d9;
+        }
+
         div[data-baseweb="select"] > div,
         div[data-baseweb="input"] > div,
         textarea {

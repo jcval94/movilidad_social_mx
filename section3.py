@@ -202,7 +202,7 @@ def show_section3():
 
         st.write("")  # Espacio en blanco
         # Colocar el botón "Procesar" justo aquí, al final del form
-        procesar = st.form_submit_button("Procesar")
+        procesar = st.form_submit_button("Conoce a qué clase perteneces")
 
     # Solo si el usuario pulsa "Procesar"
     if procesar:

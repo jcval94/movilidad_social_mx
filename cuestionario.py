@@ -52,7 +52,7 @@ def show_section4():
 
     user_choice = st.selectbox("Filtrar por", list(opciones_filtro.keys()), index=0)
 
-    if st.button("Ejecutar"):
+    if st.button("Conocer mi diagnóstico"):
         df_datos_descript_valiosas_respuestas = obtener_vecinos_de_mi_respuesta(
             df_respuestas, 
             df_cluster_target, 
