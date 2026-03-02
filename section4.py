@@ -6,6 +6,7 @@ from textwrap import dedent
 import joblib
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 from sklearn.impute import SimpleImputer
 from sklearn.neighbors import NearestNeighbors
@@ -444,6 +445,240 @@ def cached_generate_explanation(app_state_json: str):
     return generate_explanation(json.loads(app_state_json))
 
 
+def _parse_percent(value):
+    if value is None:
+        return np.nan
+    txt = str(value).strip().replace('%', '').replace(',', '.')
+    match = re.search(r"[-+]?\d*\.?\d+", txt)
+    return float(match.group(0)) if match else np.nan
+
+
+def _normalize_confidence_for_size(confidence):
+    value = str(confidence).strip().lower()
+    mapping = {
+        "baja": 1,
+        "media": 2,
+        "alta": 3,
+        "muy alta": 4,
+    }
+    if value in mapping:
+        return mapping[value]
+    try:
+        return float(confidence)
+    except Exception:
+        return 2
+
+
+def _scenario_short_label(group_name, scenario_name):
+    group_match = re.search(r"(\d+)", str(group_name))
+    scenario_match = re.search(r"(\d+)", str(scenario_name))
+    g = group_match.group(1) if group_match else str(group_name)
+    s = scenario_match.group(1) if scenario_match else str(scenario_name)
+    return f"G{g}-E{s}"
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def build_prioritization_points(grouped_results_json: str):
+    grouped_results = json.loads(grouped_results_json)
+    rows = []
+    for group_idx, group_data in enumerate(grouped_results, start=1):
+        group_name = f"Grupo #{group_idx}"
+        vars_desc = [v.get("descripcion", "") for v in group_data.get("variables", []) if v.get("descripcion")]
+        cambiable = any(
+            str(v.get("change_level", "")).strip().lower() in {"fácil", "moderado", "difícil", "si", "sí"}
+            for v in group_data.get("variables", [])
+        )
+
+        for scenario in group_data.get("scenarios", []):
+            summary = scenario.get("summary", {})
+            incremento = _parse_percent(summary.get("incremento", {}).get("text"))
+            prob = _parse_percent(summary.get("probabilidad"))
+            confianza = summary.get("confianza", "N/D")
+            rows.append(
+                {
+                    "group": group_name,
+                    "scenario": f"Escenario {scenario.get('nombre', 'N/D')}",
+                    "incremento": incremento,
+                    "prob": prob,
+                    "confianza": confianza,
+                    "confianza_num": _normalize_confidence_for_size(confianza),
+                    "cambiable": cambiable,
+                    "variables": " | ".join(vars_desc) if vars_desc else "N/D",
+                }
+            )
+
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return df
+
+    df = df.dropna(subset=["incremento", "prob"]).copy()
+    df["expected_score"] = df["incremento"] * (df["prob"] / 100.0)
+    df["short_label"] = df.apply(
+        lambda row: _scenario_short_label(row["group"], row["scenario"]),
+        axis=1,
+    )
+    return df
+
+
+def _infer_population_probability(df_plot):
+    valid = df_plot.dropna(subset=["incremento", "prob"])
+    if valid.empty:
+        return 0.01
+
+    if valid["incremento"].nunique() < 2:
+        predicted = float(valid["prob"].median())
+    else:
+        slope, intercept = np.polyfit(valid["incremento"].astype(float), valid["prob"].astype(float), 1)
+        predicted = float(intercept)
+
+    return max(predicted, 0.01)
+
+
+def render_prioritization_map(grouped_results):
+    st.write("### Mapa de priorización: Incremento vs Probabilidad")
+
+    points_df = build_prioritization_points(json.dumps(grouped_results, ensure_ascii=False, sort_keys=True))
+    if points_df.empty:
+        st.info("No hay datos suficientes para construir el mapa de priorización.")
+        return
+
+    df_plot = points_df.copy().sort_values("expected_score", ascending=False)
+    top_idx = df_plot.head(5).index
+    df_plot["is_top"] = df_plot.index.isin(top_idx)
+
+    x_med = float(df_plot["prob"].median())
+    y_med = float(df_plot["incremento"].median())
+
+    palette = [
+        "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+        "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+    ]
+    groups_sorted = sorted(points_df["group"].unique())
+    color_map = {g: palette[i % len(palette)] for i, g in enumerate(groups_sorted)}
+
+    col_plot, col_legend = st.columns([3.2, 1.2])
+    with col_legend:
+        show_population = st.button("¿Donde está la población?", key="s4_show_population")
+        st.markdown("**Cómo leerla**")
+        st.caption("Arriba-derecha = mayor prioridad (alto incremento y alta probabilidad).")
+
+    fig = go.Figure()
+    for group_name, gdf in df_plot.groupby("group"):
+        marker_sizes = 10 + (gdf["confianza_num"].fillna(2).astype(float) * 4)
+        fig.add_trace(
+            go.Scatter(
+                x=gdf["prob"],
+                y=gdf["incremento"],
+                mode="markers+text",
+                name=group_name,
+                text=np.where(gdf["is_top"], gdf["short_label"], ""),
+                textposition="top center",
+                marker={
+                    "size": marker_sizes,
+                    "color": color_map[group_name],
+                    "opacity": np.where(gdf["cambiable"], 0.9, 0.35),
+                    "line": {
+                        "width": np.where(gdf["is_top"], 2.6, 0.6),
+                        "color": np.where(gdf["is_top"], "#111827", "#ffffff"),
+                    },
+                },
+                customdata=np.stack(
+                    [
+                        gdf["group"],
+                        gdf["scenario"],
+                        gdf["expected_score"],
+                        gdf["confianza"],
+                        gdf["cambiable"],
+                        gdf["variables"],
+                    ],
+                    axis=-1,
+                ),
+                hovertemplate=(
+                    "<b>%{customdata[0]}</b><br>"
+                    "%{customdata[1]}<br>"
+                    "Incremento: %{y:.2f}%<br>"
+                    "Probabilidad: %{x:.2f}%<br>"
+                    "Impacto esperado: %{customdata[2]:.2f}<br>"
+                    "Confianza: %{customdata[3]}<br>"
+                    "Cambiable: %{customdata[4]}<br>"
+                    "Variables: %{customdata[5]}"
+                    "<extra></extra>"
+                ),
+            )
+        )
+
+    top_df = df_plot[df_plot["is_top"]]
+    fig.add_trace(
+        go.Scatter(
+            x=top_df["prob"],
+            y=top_df["incremento"],
+            mode="markers",
+            marker={
+                "size": 26,
+                "color": "rgba(255,255,255,0)",
+                "line": {"width": 3, "color": "rgba(17,24,39,0.25)"},
+            },
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+
+    if show_population:
+        population_prob = _infer_population_probability(df_plot)
+        fig.add_trace(
+            go.Scatter(
+                x=[population_prob],
+                y=[0.0],
+                mode="markers+text",
+                name="Población",
+                text=["Población"],
+                textposition="top center",
+                marker={
+                    "size": 18,
+                    "color": "#dc2626",
+                    "line": {"width": 2, "color": "#7f1d1d"},
+                },
+                hovertemplate=(
+                    "<b>Población</b><br>"
+                    "Incremento: 0.00%<br>"
+                    "Probabilidad inferida (LR): %{x:.2f}%"
+                    "<extra></extra>"
+                ),
+            )
+        )
+
+    fig.add_vline(x=x_med, line_dash="dash", line_color="#9ca3af")
+    fig.add_hline(y=y_med, line_dash="dash", line_color="#9ca3af")
+
+    fig.add_annotation(x=0.98, y=0.97, xref="paper", yref="paper", text="ALTO inc / ALTA prob", showarrow=False, font={"size": 11, "color": "#374151"})
+    fig.add_annotation(x=0.02, y=0.97, xref="paper", yref="paper", text="ALTO inc / BAJA prob", showarrow=False, font={"size": 11, "color": "#374151"}, xanchor="left")
+    fig.add_annotation(x=0.98, y=0.04, xref="paper", yref="paper", text="BAJO inc / ALTA prob", showarrow=False, font={"size": 11, "color": "#374151"})
+    fig.add_annotation(x=0.02, y=0.04, xref="paper", yref="paper", text="BAJO inc / BAJA prob", showarrow=False, font={"size": 11, "color": "#374151"}, xanchor="left")
+
+    fig.update_layout(
+        xaxis_title="Probabilidad (%)",
+        yaxis_title="Incremento (%)",
+        template="plotly_white",
+        legend_title_text="Grupo",
+        margin={"l": 20, "r": 20, "t": 20, "b": 20},
+    )
+    fig.update_xaxes(showgrid=True, gridcolor="rgba(148,163,184,0.2)")
+    fig.update_yaxes(showgrid=True, gridcolor="rgba(148,163,184,0.2)")
+
+    with col_plot:
+        st.plotly_chart(fig, width="stretch")
+
+    with col_legend:
+        st.markdown("**Colores por grupo**")
+        for group_name in sorted(df_plot["group"].unique()):
+            st.markdown(
+                f"<div style='display:flex;align-items:center;gap:8px;margin-bottom:6px'>"
+                f"<span style='display:inline-block;width:10px;height:10px;border-radius:50%;background:{color_map[group_name]}'></span>"
+                f"<span>{group_name}</span></div>",
+                unsafe_allow_html=True,
+            )
+
+
 
 
 def _collapse_questionnaire_after_submit():
@@ -535,6 +770,8 @@ def show_section4():
             json.dumps(app_state, ensure_ascii=False, sort_keys=True)
         )
     st.markdown(explanation)
+
+    render_prioritization_map(grouped_results)
 
     if has_low_reliability(grouped_results):
         st.warning(
