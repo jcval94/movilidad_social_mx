@@ -1,4 +1,5 @@
 import re
+import json
 from pathlib import Path
 from textwrap import dedent
 
@@ -12,6 +13,7 @@ from sklearn.preprocessing import StandardScaler
 
 from utils.diccionarios import get_data_desc, get_nuevo_diccionario
 from utils.func_s4 import construir_descripciones_cluster
+from llm.gemini_explainer import generate_explanation
 
 BASE_PATH = Path("data")
 TARGET_LABELS = {
@@ -228,7 +230,10 @@ def parse_cluster_description(raw_desc):
                 summary_data["probabilidad"] = stripped.split(":", 1)[1].strip()
             elif stripped.startswith("- Nivel de confianza"):
                 conf_val = stripped.split(":", 1)[1].strip()
-                summary_data["confianza"] = map_confidence(conf_val)
+                match_obs = re.search(r"\((\d+)\s+obs\)", conf_val)
+                summary_data["obs"] = match_obs.group(1) if match_obs else "no disponible"
+                conf_numeric = conf_val.split("(", 1)[0].strip()
+                summary_data["confianza"] = map_confidence(conf_numeric)
             continue
 
         if stripped.startswith("- Variable:"):
@@ -262,12 +267,15 @@ def parse_cluster_description(raw_desc):
                 var_info["categorias"] = " | ".join(cat_values)
             elif line.startswith("- ¿Puedo cambiarlo yo?:"):
                 val = line.split(":", 1)[1].strip()
+                var_info["change_level"] = val
                 if val.lower() != "no_aplica":
                     extra_props.append(f"¿Puedo cambiarlo yo?: {val}")
             elif line.startswith("- Involucrados:"):
+                var_info["involucrados"] = line.split(':', 1)[1].strip()
                 extra_props.append(f"Involucrados: {line.split(':', 1)[1].strip()}")
             elif line.startswith("- Recursos:"):
                 val = line.split(":", 1)[1].strip()
+                var_info["recursos"] = val
                 if val.lower() != "no_aplica":
                     extra_props.append(f"Recursos: {val}")
 
@@ -276,6 +284,9 @@ def parse_cluster_description(raw_desc):
                 {
                     "descripcion": var_info["descripcion"],
                     "categorias": var_info["categorias"],
+                    "change_level": var_info.get("change_level", "no disponible"),
+                    "involucrados": var_info.get("involucrados", "no disponible"),
+                    "recursos": var_info.get("recursos", "no disponible"),
                     "extras": extra_props,
                 }
             )
@@ -341,6 +352,7 @@ def format_grouped_scenarios_card(group_idx, group_data):
         incremento = summary.get("incremento", {"text": "N/D", "color": "#666666"})
         probabilidad = summary.get("probabilidad", "N/D")
         confianza = summary.get("confianza", "N/D")
+        obs = summary.get("obs", "N/D")
 
         scenario_cols += f"""
         <div style="min-width:170px;border-left:1px solid #e5e7eb;padding-left:12px;padding-right:8px">
@@ -351,6 +363,8 @@ def format_grouped_scenarios_card(group_idx, group_data):
           <div style="font-weight:700;margin-bottom:8px">{probabilidad}</div>
           <div class="app-meta" style="margin-bottom:2px">Confianza</div>
           <div style="font-weight:700">{confianza}</div>
+          <div class="app-meta" style="margin-bottom:2px;margin-top:8px">Obs</div>
+          <div style="font-weight:700">{obs}</div>
         </div>
         """
 
@@ -387,6 +401,30 @@ def filter_cluster_results(df):
         )
         & (df["nivel_de_confianza_cluster"] > 0)
     ]
+
+
+def get_gemini_api_key():
+    try:
+        for key in ("gemini_api_key", "GEMINI_API_KEY"):
+            if key in st.secrets and str(st.secrets[key]).strip():
+                return str(st.secrets[key]).strip()
+    except Exception:
+        pass
+    return ""
+
+
+def get_active_filters_from_session():
+    filters = []
+    selected_vars = st.session_state.get("selected_vars", [])
+    for var in selected_vars:
+        values = st.session_state.get(f"cats_{var}", [])
+        filters.append({"variable": var, "values": values})
+    return filters
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def cached_generate_explanation(app_state_json: str):
+    return generate_explanation(json.loads(app_state_json))
 
 
 def show_section4():
@@ -443,8 +481,25 @@ def show_section4():
         show_Probabilidad=True,
     )
 
-    st.write("### Resultados:")
     grouped_results = format_all_clusters(resultado)
+
+    app_state = {
+        "target": user_selected_target,
+        "target_label": TARGET_LABELS.get(user_selected_target, user_selected_target),
+        "active_filters": get_active_filters_from_session(),
+        "questionnaire": df_respuestas.to_dict(orient="records"),
+        "results": grouped_results,
+        "gemini_api_key": get_gemini_api_key(),
+    }
+
+    st.write("### Explicación personalizada (IA)")
+    with st.spinner("Generando explicación…"):
+        explanation = cached_generate_explanation(
+            json.dumps(app_state, ensure_ascii=False, sort_keys=True)
+        )
+    st.markdown(explanation)
+
+    st.write("### Resultados:")
     for group_idx, group_data in enumerate(grouped_results, start=1):
         st.markdown(
             format_grouped_scenarios_card(group_idx, group_data),
