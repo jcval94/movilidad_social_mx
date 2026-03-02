@@ -57,7 +57,125 @@ def show_section3():
         'p126b': 'Lavadora'
         }
 
-    # Mensaje breve
+    # Encabezado visual editorial: imagen + narrativa
+    st.markdown(
+        """
+        <style>
+            .intro-wrapper {
+                background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+                border: 1px solid #e2e8f0;
+                border-radius: 22px;
+                box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+                padding: 1.35rem;
+                margin-bottom: 1.2rem;
+            }
+            .intro-grid {
+                display: grid;
+                grid-template-columns: 0.95fr 1.4fr;
+                gap: 1.35rem;
+                align-items: stretch;
+            }
+            .intro-image-card {
+                border-radius: 16px;
+                overflow: hidden;
+                min-height: 360px;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+                position: relative;
+            }
+            .intro-image-card img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                object-position: center;
+                display: block;
+                filter: contrast(1.04) saturate(1.08);
+            }
+            .intro-image-card::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(to top, rgba(2, 6, 23, 0.25), rgba(2, 6, 23, 0.00));
+                pointer-events: none;
+            }
+            .intro-text-card {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 16px;
+                padding: 1.35rem 1.4rem;
+                color: #0f172a;
+            }
+            .intro-eyebrow {
+                display: inline-block;
+                font-size: 0.74rem;
+                letter-spacing: 0.10em;
+                font-weight: 700;
+                text-transform: uppercase;
+                color: #1d4ed8;
+                background: #dbeafe;
+                border-radius: 999px;
+                padding: 0.25rem 0.6rem;
+                margin-bottom: 0.7rem;
+            }
+            .intro-title {
+                font-size: 1.75rem;
+                line-height: 1.15;
+                letter-spacing: -0.02em;
+                margin: 0 0 0.85rem 0;
+                color: #111827;
+            }
+            .intro-divider {
+                width: 68px;
+                height: 3px;
+                border-radius: 99px;
+                background: #2563eb;
+                margin-bottom: 1rem;
+            }
+            .intro-text-card p {
+                margin: 0 0 0.9rem 0;
+                line-height: 1.75;
+                font-size: 1.04rem;
+                color: #1f2937;
+                text-align: justify;
+            }
+            .intro-text-card p:last-child {
+                margin-bottom: 0;
+            }
+            @media (max-width: 980px) {
+                .intro-grid {
+                    grid-template-columns: 1fr;
+                }
+                .intro-image-card {
+                    min-height: 280px;
+                }
+                .intro-title {
+                    font-size: 1.5rem;
+                }
+            }
+        </style>
+
+        <section class="intro-wrapper">
+            <div class="intro-grid">
+                <figure class="intro-image-card">
+                    <img src="https://github.com/jcval94/movilidad_social_mx/blob/main/images/movilidad.png?raw=true" alt="Movilidad social en México" />
+                </figure>
+                <article class="intro-text-card">
+                    <span class="intro-eyebrow">Diagnóstico social</span>
+                    <h3 class="intro-title">¿Qué clase soy en México?</h3>
+                    <div class="intro-divider"></div>
+                    <p>
+                        En México, la movilidad social es como un "elevador descompuesto": el lugar donde naces determina casi por completo a dónde llegarás. Casi la mitad de tu éxito económico depende de factores que no elegiste (como tu código postal, el dinero de tus padres o tu tono de piel), y lo más crudo es que 74 de cada 100 personas que nacen en la pobreza se quedan ahí toda su vida. En resumen, el esfuerzo individual rara vez logra vencer a las barreras de un sistema donde, lamentablemente, origen sigue siendo destino.
+                    </p>
+                    <p>
+                        Este proyecto busca darte las herramientas a través de la IA, dándote un diagnóstico acorde a tu contexto. Puedes empezar primero conociéndote y revisando en las otras páginas qué hacer para superarte.
+                    </p>
+                </article>
+            </div>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### Cuestionario")
     st.write("Selecciona los que tienes y dale a **Procesar**:")
 
     # Crear un formulario para que no haya recarga en cada click de checkbox
