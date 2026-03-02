@@ -7,3 +7,4 @@ seaborn
 plotly
 joblib
 scikit-learn
+google-genai

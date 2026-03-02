@@ -253,6 +253,18 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Configurar Gemini (explicación personalizada IA)
+
+Agrega la clave en `.streamlit/secrets.toml` (o en los secretos de Streamlit Cloud). La app acepta ambos nombres (`gemini_api_key` o `GEMINI_API_KEY`):
+
+```toml
+gemini_api_key = "TU_CLAVE"
+# o equivalente:
+# GEMINI_API_KEY = "TU_CLAVE"
+```
+
+> Recomendado: `gemini_api_key`. Nunca subas esta clave al repositorio ni la imprimas en logs.
+
 ### Levantar la aplicación
 
 ```bash
