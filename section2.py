@@ -2,6 +2,7 @@
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 
 from data_utils import load_and_process_data
@@ -14,6 +15,8 @@ CLASS_TO_QUINTILES = {
     "Media Alta": [4],
     "Alta": [5]
 }
+
+SMALL_SAMPLE_THRESHOLD = 30
 
 def random_origin_dest():
     """
@@ -94,6 +97,14 @@ def show_section2():
 
     df_stats = pd.concat([n_origin, n_dest], axis=1).reset_index()
     df_stats['pct_dest'] = (df_stats['n_dest'] / df_stats['n_origin']) * 100
+    ci_bounds = df_stats.apply(
+        lambda row: wilson_ci(row['n_dest'], row['n_origin']),
+        axis=1,
+        result_type='expand'
+    )
+    df_stats[['ci_low', 'ci_high']] = ci_bounds
+    df_stats['err_plus'] = df_stats['ci_high'] - df_stats['pct_dest']
+    df_stats['err_minus'] = df_stats['pct_dest'] - df_stats['ci_low']
 
     # Convertir cohort_5y a valor numérico
     df_stats['cohort_start'] = df_stats['cohort_5y'].apply(get_lower_year)
@@ -109,6 +120,12 @@ def show_section2():
     dest_str = ", ".join(dest_multisel)
 
     chart_title = f"Porcentaje de {origin_str} que se mueven a {dest_str}"
+
+    min_n = int(df_stats['n_origin'].min()) if not df_stats.empty else 0
+    total_n = int(len(df_origin))
+    st.caption(f"Tamaño de muestra total (origen filtrado): n={total_n} | mínimo por cohorte-grupo: n={min_n}")
+    if min_n < SMALL_SAMPLE_THRESHOLD:
+        st.warning("⚠️ Muestra chica en algunos puntos de la serie temporal. Interpretar con cautela.")
 
     fig = px.line(
         df_stats,
@@ -132,6 +149,17 @@ def show_section2():
     )
     fig.update_xaxes(showgrid=False)
     fig.update_yaxes(showgrid=False)
+
+    for trace in fig.data:
+        label = trace.name
+        subset = df_stats[df_stats[color_column] == label].sort_values('cohort_start')
+        trace.error_y = dict(
+            type='data',
+            symmetric=False,
+            array=subset['err_plus'].tolist(),
+            arrayminus=subset['err_minus'].tolist(),
+            visible=True
+        )
 
     st.plotly_chart(fig, use_container_width=True)
 
@@ -209,3 +237,19 @@ def create_label_column(df):
 
     df['group_label'] = df.apply(make_label, axis=1)
     return 'group_label'
+
+
+def wilson_ci(successes, n, z=1.96):
+    if n <= 0:
+        return 0.0, 0.0
+    p = successes / n
+    denom = 1 + z**2 / n
+    center = (p + z**2 / (2 * n)) / denom
+    margin = (
+        z
+        * np.sqrt((p * (1 - p) / n) + (z**2 / (4 * n**2)))
+        / denom
+    )
+    lower = max(0.0, center - margin)
+    upper = min(1.0, center + margin)
+    return lower * 100, upper * 100
