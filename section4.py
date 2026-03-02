@@ -550,8 +550,16 @@ def render_prioritization_map(grouped_results):
     y_med = float(df_plot["incremento"].median())
 
     palette = [
-        "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
-        "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+        "#6D28D9",  # morado intenso
+        "#8B5CF6",  # violeta
+        "#A78BFA",  # lila
+        "#C4B5FD",  # lila claro
+        "#DDD6FE",  # lavanda
+        "#5EEAD4",  # menta
+        "#99F6E4",  # menta claro
+        "#2DD4BF",  # turquesa-menta
+        "#7C3AED",  # morado medio
+        "#14B8A6",  # menta oscuro
     ]
     groups_sorted = sorted(points_df["group"].unique())
     color_map = {g: palette[i % len(palette)] for i, g in enumerate(groups_sorted)}
@@ -668,21 +676,15 @@ def render_prioritization_map(grouped_results):
     with col_plot:
         st.plotly_chart(fig, width="stretch")
 
-    with col_legend:
-        st.markdown("**Colores por grupo**")
-        for group_name in sorted(df_plot["group"].unique()):
-            st.markdown(
-                f"<div style='display:flex;align-items:center;gap:8px;margin-bottom:6px'>"
-                f"<span style='display:inline-block;width:10px;height:10px;border-radius:50%;background:{color_map[group_name]}'></span>"
-                f"<span>{group_name}</span></div>",
-                unsafe_allow_html=True,
-            )
-
-
-
+    return show_population
 
 def _collapse_questionnaire_after_submit():
     st.session_state["section4_form_expanded"] = False
+
+
+def _reset_section4_cached_output():
+    for key in ["section4_cached_results", "section4_cached_explanation", "section4_show_results"]:
+        st.session_state.pop(key, None)
 
 
 def show_section4():
@@ -702,6 +704,7 @@ def show_section4():
     if st.session_state.get("section4_last_target") != user_selected_target:
         st.session_state["section4_last_target"] = user_selected_target
         st.session_state["section4_form_expanded"] = True
+        _reset_section4_cached_output()
 
     df_cluster_target = build_cluster_target_frame(
         assets["df_clusterizados_total_origi"],
@@ -723,52 +726,61 @@ def show_section4():
                 on_click=_collapse_questionnaire_after_submit,
             )
 
-    if not ejecutar:
+    if ejecutar:
+        df_valiosas = assets["df_valiosas_dict"][user_selected_target]
+        df_resultados = obtener_vecinos_de_mi_respuesta(
+            df_respuestas,
+            df_cluster_target,
+            df_valiosas,
+            n_vecinos=50,
+        )
+
+        if not df_resultados.empty and "cluster_N_Proba" in df_resultados.columns:
+            df_resultados["nivel_de_confianza_cluster"] = pd.qcut(
+                df_resultados["cluster_N_Proba"],
+                q=4,
+                labels=False,
+                duplicates="drop",
+            )
+
+        df_filtrado = filter_cluster_results(df_resultados)
+
+        resultado = construir_descripciones_cluster(
+            df_filtrado,
+            data_desc_global,
+            get_nuevo_diccionario(),
+            language="es",
+            show_N_probabilidad=True,
+            show_Probabilidad=True,
+        )
+
+        grouped_results = format_all_clusters(resultado)
+
+        app_state = {
+            "target": user_selected_target,
+            "target_label": TARGET_LABELS.get(user_selected_target, user_selected_target),
+            "active_filters": get_active_filters_from_session(),
+            "questionnaire": df_respuestas.to_dict(orient="records"),
+            "results": grouped_results,
+            "gemini_api_key": get_gemini_api_key(),
+        }
+
+        with st.spinner("Generando diagnóstico..."):
+            explanation = cached_generate_explanation(
+                json.dumps(app_state, ensure_ascii=False, sort_keys=True)
+            )
+
+        st.session_state["section4_cached_results"] = grouped_results
+        st.session_state["section4_cached_explanation"] = explanation
+        st.session_state["section4_show_results"] = True
+
+    if not st.session_state.get("section4_show_results"):
         return
 
-    df_valiosas = assets["df_valiosas_dict"][user_selected_target]
-    df_resultados = obtener_vecinos_de_mi_respuesta(
-        df_respuestas,
-        df_cluster_target,
-        df_valiosas,
-        n_vecinos=50,
-    )
-
-    if not df_resultados.empty and "cluster_N_Proba" in df_resultados.columns:
-        df_resultados["nivel_de_confianza_cluster"] = pd.qcut(
-            df_resultados["cluster_N_Proba"],
-            q=4,
-            labels=False,
-            duplicates="drop",
-        )
-
-    df_filtrado = filter_cluster_results(df_resultados)
-
-    resultado = construir_descripciones_cluster(
-        df_filtrado,
-        data_desc_global,
-        get_nuevo_diccionario(),
-        language="es",
-        show_N_probabilidad=True,
-        show_Probabilidad=True,
-    )
-
-    grouped_results = format_all_clusters(resultado)
-
-    app_state = {
-        "target": user_selected_target,
-        "target_label": TARGET_LABELS.get(user_selected_target, user_selected_target),
-        "active_filters": get_active_filters_from_session(),
-        "questionnaire": df_respuestas.to_dict(orient="records"),
-        "results": grouped_results,
-        "gemini_api_key": get_gemini_api_key(),
-    }
+    grouped_results = st.session_state.get("section4_cached_results", [])
+    explanation = st.session_state.get("section4_cached_explanation", "")
 
     st.write("### Explicación personalizada (IA)")
-    with st.spinner("Generando diagnóstico..."):
-        explanation = cached_generate_explanation(
-            json.dumps(app_state, ensure_ascii=False, sort_keys=True)
-        )
     st.markdown(explanation)
 
     render_prioritization_map(grouped_results)
