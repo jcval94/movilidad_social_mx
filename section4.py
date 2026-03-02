@@ -61,21 +61,29 @@ def generar_lista_preguntas(data_desc):
     return preguntas
 
 
+def _render_question_header(descripcion, variable):
+    st.markdown(
+        (
+            f"**{descripcion}** "
+            f"<span style=\"font-size:0.82rem;color:#6b7280;font-weight:500;\">v: {variable}</span>"
+        ),
+        unsafe_allow_html=True,
+    )
+
+
 def preguntar_opciones_streamlit(i, variable, descripcion, opciones):
     key_uid = f"opt_{variable}_{i}"
-    st.markdown(f"**{descripcion}**")
-    st.caption(f"Variable: {variable}")
+    _render_question_header(descripcion, variable)
     lista = [f"{k} - {v}" for k, v in opciones.items()]
-    sel = st.selectbox("Selecciona una opción", lista, key=key_uid)
+    sel = st.selectbox(" ", lista, key=key_uid, label_visibility="collapsed")
     cod = int(sel.split(" - ")[0])
     return cod, opciones[cod]
 
 
 def preguntar_numero_streamlit(i, variable, descripcion):
     key_uid = f"num_{variable}_{i}"
-    st.markdown(f"**{descripcion}**")
-    st.caption(f"Variable: {variable}")
-    val = st.number_input("Ingresa un valor", value=0.0, step=1.0, key=key_uid)
+    _render_question_header(descripcion, variable)
+    val = st.number_input(" ", value=0.0, step=1.0, key=key_uid, label_visibility="collapsed")
     return val, str(val)
 
 
@@ -427,13 +435,29 @@ def cached_generate_explanation(app_state_json: str):
     return generate_explanation(json.loads(app_state_json))
 
 
+
+
+def _collapse_questionnaire_after_submit():
+    st.session_state["section4_form_expanded"] = False
+
+
 def show_section4():
     assets = load_section4_assets(str(BASE_PATH))
 
     targets = list(assets["df_valiosas_dict"].keys())
     opciones = [(valor, TARGET_LABELS.get(valor, valor)) for valor in targets]
-    retorno_user = st.selectbox("Target", options=opciones, format_func=lambda x: x[1])
+    retorno_user = st.selectbox(
+        " ",
+        options=opciones,
+        format_func=lambda x: x[1],
+        key="section4_target_select",
+        label_visibility="collapsed",
+    )
     user_selected_target = retorno_user[0]
+
+    if st.session_state.get("section4_last_target") != user_selected_target:
+        st.session_state["section4_last_target"] = user_selected_target
+        st.session_state["section4_form_expanded"] = True
 
     df_cluster_target = build_cluster_target_frame(
         assets["df_clusterizados_total_origi"],
@@ -447,9 +471,13 @@ def show_section4():
     data_desc_global = get_data_desc()
     data_desc_usable = {k: data_desc_global[k] for k in preguntas_lista if k in data_desc_global}
 
-    with st.form("cuestionario_form"):
-        df_respuestas = cuestionario_general(data_desc_usable, cols_per_row=3)
-        ejecutar = st.form_submit_button("Ejecutar")
+    with st.expander("Cuestionario", expanded=st.session_state.get("section4_form_expanded", True)):
+        with st.form("cuestionario_form"):
+            df_respuestas = cuestionario_general(data_desc_usable, cols_per_row=3)
+            ejecutar = st.form_submit_button(
+                "Ejecutar",
+                on_click=_collapse_questionnaire_after_submit,
+            )
 
     if not ejecutar:
         return
@@ -493,7 +521,7 @@ def show_section4():
     }
 
     st.write("### Explicación personalizada (IA)")
-    with st.spinner("Generando explicación…"):
+    with st.spinner("Generando diagnóstico..."):
         explanation = cached_generate_explanation(
             json.dumps(app_state, ensure_ascii=False, sort_keys=True)
         )
