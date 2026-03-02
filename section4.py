@@ -397,6 +397,15 @@ def format_all_clusters(resultado):
     return group_clusters_by_variables(parsed_clusters)
 
 
+def has_low_reliability(groups):
+    for group in groups:
+        for scenario in group.get("scenarios", []):
+            confidence = str(scenario.get("summary", {}).get("confianza", "")).strip().lower()
+            if confidence == "baja":
+                return True
+    return False
+
+
 def filter_cluster_results(df):
     required = ["cambio_yo_moderado", "cambio_yo_difícil", "cambio_yo_fácil", "nivel_de_confianza_cluster"]
     if not all(col in df.columns for col in required):
@@ -526,6 +535,12 @@ def show_section4():
             json.dumps(app_state, ensure_ascii=False, sort_keys=True)
         )
     st.markdown(explanation)
+
+    if has_low_reliability(grouped_results):
+        st.warning(
+            "⚠️ Confiabilidad baja detectada en al menos un escenario. "
+            "Interpreta el diagnóstico con prudencia y valida con más experimentos en la app."
+        )
 
     st.write("### Resultados:")
     for group_idx, group_data in enumerate(grouped_results, start=1):

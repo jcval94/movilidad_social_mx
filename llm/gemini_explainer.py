@@ -18,9 +18,13 @@ SYSTEM_PROMPT_EXPLAINER = (
     "Formato obligatorio de respuesta:\n"
     "1) Resumen (3–5 líneas): Target, idea principal, probabilidad y comparación con la media.\n"
     "2) Qué significa este Grupo: condiciones; inmutables vs accionables; explicar ‘|’.\n"
-    "3) Acciones accionables (solo accionables): pasos concretos + dificultad + involucrados + recursos + señales de avance. Prioriza por impacto probable y facilidad.\n"
-    "4) Plan por horizonte: 7 días; 30–90 días; 6–12 meses.\n"
-    "5) Advertencias y cómo validar en la app: límites + 3–5 experimentos cambiando solo variables accionables disponibles.\n\n"
+    "3) Confiabilidad del diagnóstico (obligatoria):\n"
+    "   - Nivel: Alta/Media/Baja.\n"
+    "   - Justificación: explícitamente basada en Confianza y Obs de los escenarios.\n"
+    "   - Recomendación de prudencia: indica qué tan conservador debe ser el usuario según el nivel.\n"
+    "4) Acciones accionables (solo accionables): pasos concretos + dificultad + involucrados + recursos + señales de avance. Prioriza por impacto probable y facilidad.\n"
+    "5) Plan por horizonte: 7 días; 30–90 días; 6–12 meses.\n"
+    "6) Advertencias y cómo validar en la app: límites + 3–5 experimentos cambiando solo variables accionables disponibles.\n\n"
     "Tono: español natural, cercano, respetuoso; cero moralina; cero prejuicios."
 )
 
@@ -99,8 +103,8 @@ def _format_results(groups: list[dict[str, Any]]) -> str:
                 f"Escenario { _safe_text(scenario.get('nombre')) }: "
                 f"incremento={_safe_text((summary.get('incremento') or {}).get('text'))}, "
                 f"probabilidad={_safe_text(summary.get('probabilidad'))}, "
-                f"confianza={_safe_text(summary.get('confianza'))}, "
-                f"obs={_safe_text(summary.get('obs'))}"
+                f"Confianza={_safe_text(summary.get('confianza'))}, "
+                f"Obs={_safe_text(summary.get('obs'))}"
             )
         rendered_groups.append("\n".join(group_lines))
 
