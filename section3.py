@@ -58,6 +58,9 @@ def show_section3():
         }
 
     # Encabezado visual editorial: imagen + narrativa
+    # Usamos imagen local para evitar la latencia de solicitarla a GitHub en cada carga.
+    hero_image_path = "images/movilidad.png"
+
     st.markdown(
         """
         <style>
@@ -81,14 +84,6 @@ def show_section3():
                 min-height: 360px;
                 box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
                 position: relative;
-            }
-            .intro-image-card img {
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-                object-position: center;
-                display: block;
-                filter: contrast(1.04) saturate(1.08);
             }
             .intro-image-card::after {
                 content: "";
@@ -152,12 +147,26 @@ def show_section3():
                 }
             }
         </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
-        <section class="intro-wrapper">
-            <div class="intro-grid">
-                <figure class="intro-image-card">
-                    <img src="https://github.com/jcval94/movilidad_social_mx/blob/main/images/movilidad.png?raw=true" alt="Movilidad social en México" />
-                </figure>
+    left_col, right_col = st.columns([0.95, 1.4], gap="large")
+
+    with left_col:
+        if os.path.exists(hero_image_path):
+            st.markdown('<div class="intro-image-card">', unsafe_allow_html=True)
+            st.image(hero_image_path, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.warning(
+                "No se encontró la imagen principal en 'images/movilidad.png'."
+            )
+
+    with right_col:
+        st.markdown(
+            """
+            <section class="intro-wrapper">
                 <article class="intro-text-card">
                     <span class="intro-eyebrow">Diagnóstico social</span>
                     <h3 class="intro-title">¿Qué clase soy en México?</h3>
@@ -169,11 +178,10 @@ def show_section3():
                         Este proyecto busca darte las herramientas a través de la IA, dándote un diagnóstico acorde a tu contexto. Puedes empezar primero conociéndote y revisando en las otras páginas qué hacer para superarte.
                     </p>
                 </article>
-            </div>
-        </section>
-        """,
-        unsafe_allow_html=True,
-    )
+            </section>
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.markdown("### Cuestionario")
     st.write("Selecciona los que tienes y dale a **Procesar**:")
