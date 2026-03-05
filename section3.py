@@ -82,14 +82,14 @@ def show_section3():
             .intro-image-card {
                 border-radius: 16px;
                 overflow: hidden;
-                min-height: 280px;
+                min-height: 210px;
                 box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
                 position: relative;
             }
             .intro-image-card img {
                 width: 100%;
                 height: 100%;
-                min-height: 280px;
+                min-height: 210px;
                 object-fit: cover;
                 display: block;
             }
@@ -170,10 +170,10 @@ def show_section3():
                     grid-template-columns: 1fr;
                 }
                 .intro-image-card {
-                    min-height: 220px;
+                    min-height: 165px;
                 }
                 .intro-image-card img {
-                    min-height: 220px;
+                    min-height: 165px;
                 }
                 .intro-title {
                     font-size: 1.5rem;
@@ -184,7 +184,7 @@ def show_section3():
         unsafe_allow_html=True,
     )
 
-    left_col, right_col = st.columns([0.95, 1.4], gap="large")
+    left_col, right_col = st.columns([0.7125, 1.4], gap="large")
 
     with left_col:
         if os.path.exists(hero_image_path):
