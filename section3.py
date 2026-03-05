@@ -6,6 +6,7 @@ import numpy as np
 import joblib
 import plotly.express as px
 import os
+import base64
 
 # Diccionario para mapear clases a quintiles
 CLASS_TO_QUINTILES = {
@@ -85,6 +86,13 @@ def show_section3():
                 box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
                 position: relative;
             }
+            .intro-image-card img {
+                width: 100%;
+                height: 100%;
+                min-height: 360px;
+                object-fit: cover;
+                display: block;
+            }
             .intro-image-card::after {
                 content: "";
                 position: absolute;
@@ -142,6 +150,9 @@ def show_section3():
                 .intro-image-card {
                     min-height: 280px;
                 }
+                .intro-image-card img {
+                    min-height: 280px;
+                }
                 .intro-title {
                     font-size: 1.5rem;
                 }
@@ -155,9 +166,17 @@ def show_section3():
 
     with left_col:
         if os.path.exists(hero_image_path):
-            st.markdown('<div class="intro-image-card">', unsafe_allow_html=True)
-            st.image(hero_image_path, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            with open(hero_image_path, "rb") as hero_file:
+                hero_image_b64 = base64.b64encode(hero_file.read()).decode("utf-8")
+
+            st.markdown(
+                f'''
+                <div class="intro-image-card">
+                    <img src="data:image/png;base64,{hero_image_b64}" alt="Movilidad social en México" />
+                </div>
+                ''',
+                unsafe_allow_html=True,
+            )
         else:
             st.warning(
                 "No se encontró la imagen principal en 'images/movilidad.png'."
