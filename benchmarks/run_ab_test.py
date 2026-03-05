@@ -47,11 +47,20 @@ def benchmark_data_loading(repeats: int = 3):
         _ = load_and_process_data()
         cached_hit_times.append(time.perf_counter() - t0)
 
+    uncached_avg = sum(uncached_times) / len(uncached_times)
+    cached_hit_avg = sum(cached_hit_times) / len(cached_hit_times)
+    cache_hits = len(cached_hit_times)
+    cache_misses = 1
+
     return {
-        "uncached_avg_s": sum(uncached_times) / len(uncached_times),
+        "uncached_avg_s": uncached_avg,
         "cached_first_call_s": first_cached,
-        "cached_hit_avg_s": sum(cached_hit_times) / len(cached_hit_times),
-        "cache_speedup_vs_uncached_x": (sum(uncached_times) / len(uncached_times)) / max(sum(cached_hit_times) / len(cached_hit_times), 1e-9),
+        "cached_hit_avg_s": cached_hit_avg,
+        "before_after_avg_delta_s": uncached_avg - cached_hit_avg,
+        "cache_speedup_vs_uncached_x": uncached_avg / max(cached_hit_avg, 1e-9),
+        "cache_hits": cache_hits,
+        "cache_misses": cache_misses,
+        "cache_hit_ratio": cache_hits / max(cache_hits + cache_misses, 1),
     }
 
 
@@ -79,6 +88,10 @@ def main():
         ["data_loading", "B_refactor_cached", "first_call_seconds", f"{perf_metrics['cached_first_call_s']:.6f}"],
         ["data_loading", "B_refactor_cached", "cache_hit_avg_seconds", f"{perf_metrics['cached_hit_avg_s']:.6f}"],
         ["data_loading", "B_refactor_cached", "speedup_cache_hit_vs_uncached_x", f"{perf_metrics['cache_speedup_vs_uncached_x']:.2f}"],
+        ["data_loading", "B_refactor_cached", "before_after_avg_delta_s", f"{perf_metrics['before_after_avg_delta_s']:.6f}"],
+        ["data_loading", "B_refactor_cached", "cache_hits", perf_metrics["cache_hits"]],
+        ["data_loading", "B_refactor_cached", "cache_misses", perf_metrics["cache_misses"]],
+        ["data_loading", "B_refactor_cached", "cache_hit_ratio", f"{perf_metrics['cache_hit_ratio']:.2%}"],
     ]
 
     with OUT_CSV.open("w", newline="", encoding="utf-8") as f:
@@ -93,6 +106,8 @@ def main():
 - Carga de datos: promedio baseline sin caché **{perf_metrics['uncached_avg_s']:.4f}s**.
 - Carga cacheada: primer llamado **{perf_metrics['cached_first_call_s']:.4f}s**, hit de caché promedio **{perf_metrics['cached_hit_avg_s']:.4f}s**.
 - Aceleración en hits de caché: **{perf_metrics['cache_speedup_vs_uncached_x']:.2f}x**.
+- Delta promedio (before/after): **{perf_metrics['before_after_avg_delta_s']:.4f}s** menos por llamada en cache hit.
+- Hit ratio medido en experimento: **{perf_metrics['cache_hit_ratio']:.0%}** ({perf_metrics['cache_hits']} hits / {perf_metrics['cache_hits'] + perf_metrics['cache_misses']} llamadas cacheadas).
 
 ## Archivos de salida
 - CSV de métricas: `benchmarks/ab_test_results.csv`

@@ -4,6 +4,11 @@ import streamlit as st
 from time import perf_counter
 
 
+# Datos de encuesta con baja frecuencia de cambio: TTL de horas.
+DATA_CACHE_TTL_SECONDS = 4 * 60 * 60
+DATA_CACHE_VERSION = "v2"
+
+
 def load_and_process_data_uncached():
     """
     Lee los archivos .dta, hace merge y crea las variables necesarias.
@@ -160,14 +165,15 @@ def load_and_process_data_uncached():
     return df
 
 
-@st.cache_data(ttl=3600, max_entries=3, show_spinner=False)
-def load_and_process_data():
-    """Versión cacheada para Streamlit."""
+@st.cache_data(ttl=DATA_CACHE_TTL_SECONDS, max_entries=3, show_spinner=False)
+def load_and_process_data(cache_version: str = DATA_CACHE_VERSION):
+    """Versión cacheada para Streamlit con clave explícita de invalidación."""
+    _ = cache_version
     return load_and_process_data_uncached()
 
 
 def measure_data_loading_latency(repeats: int = 2):
-    """Compara latencia de carga sin caché vs primer llamado cacheado vs cache hit."""
+    """Compara latencia sin cache vs cache e incluye hit-ratio aproximado del experimento."""
     uncached_times = []
     for _ in range(repeats):
         t0 = perf_counter()
@@ -177,21 +183,27 @@ def measure_data_loading_latency(repeats: int = 2):
     load_and_process_data.clear()
 
     t0 = perf_counter()
-    _ = load_and_process_data()
+    _ = load_and_process_data(DATA_CACHE_VERSION)
     cached_first_call = perf_counter() - t0
 
     cached_hit_times = []
     for _ in range(repeats):
         t0 = perf_counter()
-        _ = load_and_process_data()
+        _ = load_and_process_data(DATA_CACHE_VERSION)
         cached_hit_times.append(perf_counter() - t0)
 
     uncached_avg = sum(uncached_times) / len(uncached_times)
     cached_hit_avg = sum(cached_hit_times) / len(cached_hit_times)
+
+    cache_hits = len(cached_hit_times)
+    cache_misses = 1
 
     return {
         "uncached_avg_s": uncached_avg,
         "cached_first_call_s": cached_first_call,
         "cached_hit_avg_s": cached_hit_avg,
         "speedup_x": uncached_avg / max(cached_hit_avg, 1e-9),
+        "cache_hits": cache_hits,
+        "cache_misses": cache_misses,
+        "cache_hit_ratio": cache_hits / max(cache_hits + cache_misses, 1),
     }

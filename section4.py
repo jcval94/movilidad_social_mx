@@ -33,9 +33,16 @@ TARGET_LABELS = {
 EXCLUDED_IMPORTANCE_VARS = {"p133", "CIUO2", "p23"}
 BASE_QUESTIONS = ["p05", "p86", "p33_f"]
 
+RESOURCE_CACHE_TTL_SECONDS = 12 * 60 * 60
+RESOURCE_CACHE_VERSION = "v2"
+CATALOG_CACHE_TTL_SECONDS = 6 * 60 * 60
+FRESH_CACHE_TTL_SECONDS = 5 * 60
+DATA_CACHE_VERSION = "v2"
 
-@st.cache_resource(ttl=3600, max_entries=2, show_spinner=False)
-def load_section4_assets(base_path: str = "data"):
+
+@st.cache_resource(ttl=RESOURCE_CACHE_TTL_SECONDS, max_entries=2, show_spinner=False)
+def load_section4_assets(base_path: str = "data", cache_version: str = RESOURCE_CACHE_VERSION):
+    _ = cache_version
     base = Path(base_path)
     return {
         "df_valiosas_dict": joblib.load(base / "df_valiosas_dict.joblib"),
@@ -129,8 +136,9 @@ def cuestionario_general(data_desc, cols_per_row=3):
     return aplicar_cuestionario_en_columnas(preguntas, cols_per_row)
 
 
-@st.cache_data(ttl=1800, max_entries=256, show_spinner=False)
-def build_cluster_target_frame(df_cluster, user_selected_target):
+@st.cache_data(ttl=CATALOG_CACHE_TTL_SECONDS, max_entries=256, show_spinner=False)
+def build_cluster_target_frame(df_cluster, user_selected_target, cache_version: str = DATA_CACHE_VERSION):
+    _ = cache_version
     prefix = f"{user_selected_target}_"
     rename_map = {
         col: col.replace(prefix, "")
@@ -140,8 +148,9 @@ def build_cluster_target_frame(df_cluster, user_selected_target):
     return df_cluster.rename(columns=rename_map)
 
 
-@st.cache_data(ttl=1800, max_entries=256, show_spinner=False)
-def get_question_pool(df_feature_import, user_selected_target):
+@st.cache_data(ttl=CATALOG_CACHE_TTL_SECONDS, max_entries=256, show_spinner=False)
+def get_question_pool(df_feature_import, user_selected_target, cache_version: str = DATA_CACHE_VERSION):
+    _ = cache_version
     top_vars = [
         x.split("-")[0].strip()
         for x in df_feature_import[f"{user_selected_target}_importance"]
@@ -152,13 +161,15 @@ def get_question_pool(df_feature_import, user_selected_target):
     return sorted(set(BASE_QUESTIONS + top_vars))
 
 
-@st.cache_data(ttl=1800, max_entries=256, show_spinner=False)
+@st.cache_data(ttl=FRESH_CACHE_TTL_SECONDS, max_entries=256, show_spinner=False)
 def obtener_vecinos_de_mi_respuesta(
     df_respuestas,
     df_datos_clusterizados,
     df_datos_descript_valiosas,
     n_vecinos=20,
+    cache_version: str = DATA_CACHE_VERSION,
 ):
+    _ = cache_version
     datos_validos = df_datos_clusterizados[df_datos_clusterizados["cluster"] != -1].copy()
 
     variables_usuario = df_respuestas["variable"].tolist()
@@ -398,8 +409,9 @@ def format_grouped_scenarios_card(group_idx, group_data):
     ).strip()
 
 
-@st.cache_data(ttl=1800, max_entries=256, show_spinner=False)
-def format_all_clusters(resultado):
+@st.cache_data(ttl=CATALOG_CACHE_TTL_SECONDS, max_entries=256, show_spinner=False)
+def format_all_clusters(resultado, cache_version: str = DATA_CACHE_VERSION):
+    _ = cache_version
     parsed_clusters = {cluster_id: parse_cluster_description(desc) for cluster_id, desc in resultado.items()}
     return group_clusters_by_variables(parsed_clusters)
 
@@ -479,8 +491,9 @@ def _scenario_short_label(group_name, scenario_name):
     return f"G{g}-E{s}"
 
 
-@st.cache_data(ttl=1800, show_spinner=False)
-def build_prioritization_points(grouped_results_json: str):
+@st.cache_data(ttl=FRESH_CACHE_TTL_SECONDS, show_spinner=False)
+def build_prioritization_points(grouped_results_json: str, cache_version: str = DATA_CACHE_VERSION):
+    _ = cache_version
     grouped_results = json.loads(grouped_results_json)
     rows = []
     for group_idx, group_data in enumerate(grouped_results, start=1):
@@ -539,7 +552,10 @@ def _infer_population_probability(df_plot):
 def render_prioritization_map(grouped_results):
     st.write("### Mapa de priorización: Incremento vs Probabilidad")
 
-    points_df = build_prioritization_points(json.dumps(grouped_results, ensure_ascii=False, sort_keys=True))
+    points_df = build_prioritization_points(
+        json.dumps(grouped_results, ensure_ascii=False, sort_keys=True),
+        DATA_CACHE_VERSION,
+    )
     if points_df.empty:
         st.info("No hay datos suficientes para construir el mapa de priorización.")
         return
@@ -690,7 +706,7 @@ def _reset_section4_cached_output():
 
 
 def show_section4():
-    assets = load_section4_assets(str(BASE_PATH))
+    assets = load_section4_assets(str(BASE_PATH), RESOURCE_CACHE_VERSION)
 
     targets = list(assets["df_valiosas_dict"].keys())
     opciones = [(valor, TARGET_LABELS.get(valor, valor)) for valor in targets]
@@ -712,6 +728,7 @@ def show_section4():
     preguntas_lista = get_question_pool(
         assets["df_feature_importances_total"],
         user_selected_target,
+        DATA_CACHE_VERSION,
     )
     data_desc_global = get_data_desc()
     data_desc_usable = {k: data_desc_global[k] for k in preguntas_lista if k in data_desc_global}

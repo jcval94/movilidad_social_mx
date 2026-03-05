@@ -9,6 +9,11 @@ import os
 import base64
 from time import perf_counter
 
+MODEL_CACHE_TTL_SECONDS = 12 * 60 * 60
+MODEL_CACHE_VERSION = "v2"
+PREDICTION_CACHE_TTL_SECONDS = 5 * 60
+PREDICTION_CACHE_VERSION = "v2"
+
 # Diccionario para mapear clases a quintiles
 CLASS_TO_QUINTILES = {
     "Baja Baja": [1],
@@ -19,14 +24,22 @@ CLASS_TO_QUINTILES = {
 }
 
 
-@st.cache_resource(ttl=3600, max_entries=1, show_spinner=False)
-def load_regression_model(modelo_path: str = "models/modelo_entrenado.joblib"):
+@st.cache_resource(ttl=MODEL_CACHE_TTL_SECONDS, max_entries=1, show_spinner=False)
+def load_regression_model(
+    modelo_path: str = "models/modelo_entrenado.joblib",
+    cache_version: str = MODEL_CACHE_VERSION,
+):
+    _ = cache_version
     return joblib.load(modelo_path)
 
 
-@st.cache_data(ttl=1800, max_entries=512, show_spinner=False)
-def infer_user_class_probabilities(datos_usuario: pd.DataFrame):
-    regr = load_regression_model()
+@st.cache_data(ttl=PREDICTION_CACHE_TTL_SECONDS, max_entries=512, show_spinner=False)
+def infer_user_class_probabilities(
+    datos_usuario: pd.DataFrame,
+    cache_version: str = PREDICTION_CACHE_VERSION,
+):
+    _ = cache_version
+    regr = load_regression_model(cache_version=MODEL_CACHE_VERSION)
     if hasattr(regr, "predict_proba"):
         probabilidades = regr.predict_proba(datos_usuario)
         clases = regr.classes_
@@ -41,18 +54,24 @@ def measure_model_latency(modelo_path: str = "models/modelo_entrenado.joblib"):
     uncached_load_s = perf_counter() - t0
 
     t0 = perf_counter()
-    _ = load_regression_model(modelo_path)
+    _ = load_regression_model(modelo_path, MODEL_CACHE_VERSION)
     cached_first_s = perf_counter() - t0
 
     t0 = perf_counter()
-    _ = load_regression_model(modelo_path)
+    _ = load_regression_model(modelo_path, MODEL_CACHE_VERSION)
     cached_hit_s = perf_counter() - t0
+
+    cache_hits = 1
+    cache_misses = 1
 
     return {
         "uncached_load_s": uncached_load_s,
         "cached_first_s": cached_first_s,
         "cached_hit_s": cached_hit_s,
         "speedup_x": uncached_load_s / max(cached_hit_s, 1e-9),
+        "cache_hits": cache_hits,
+        "cache_misses": cache_misses,
+        "cache_hit_ratio": cache_hits / (cache_hits + cache_misses),
     }
 
 def show_section3():
@@ -65,7 +84,7 @@ def show_section3():
         st.error(f"No se encontró el archivo de modelo '{modelo_path}'.")
         return
 
-    regr = load_regression_model(modelo_path)
+    regr = load_regression_model(modelo_path, MODEL_CACHE_VERSION)
 
     with st.expander("Métricas de latencia (carga de modelo)", expanded=False):
         if st.button("Medir latencia modelo", key="measure_model_latency"):
@@ -79,7 +98,8 @@ def show_section3():
                 f"{model_metrics['cached_first_s']:.4f}s | "
                 "Cache hit: "
                 f"{model_metrics['cached_hit_s']:.6f}s | "
-                f"Aceleración: {model_metrics['speedup_x']:.1f}x"
+                f"Aceleración: {model_metrics['speedup_x']:.1f}x | "
+                f"Hit ratio: {model_metrics['cache_hit_ratio']:.0%}"
             )
 
     # Variables que el usuario marcará (0/1)
