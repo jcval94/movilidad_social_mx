@@ -74,3 +74,17 @@ spec:
               value: "true"
             - name: ENV
               value: production
+            - name: RESOURCES_LIMITS_CPU
+              valueFrom:
+                resourceFieldRef:
+                  containerName: app
+                  resource: limits.cpu
+                  divisor: "1"
+            - name: MAX_QUEUED_JOBS
+              value: "64"
+            - name: DIAG_WORKERS_SMALL
+              value: "1"
+            - name: DIAG_WORKERS_MEDIUM
+              value: "2"
+            - name: DIAG_WORKERS_LARGE
+              value: "4"

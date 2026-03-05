@@ -40,3 +40,14 @@ kubectl apply -f deploy/k8s/hpa.yaml
 - Si Redis no está disponible, los probes de `startup`/`readiness` fallarán y el pod no aceptará tráfico.
 - **No despliegues en horizontal (replicas > 1) sin Redis**: perderías consistencia de estado entre pods.
 
+
+## 6) Cola interna vs cola externa (evaluación)
+
+Se añadieron métricas de cola (`diag:metrics:queue`) con `queued`, `running`, `failed` y `timeout` para habilitar autoscaling/alertas a través de Redis + Prometheus Adapter.
+
+Para desacoplar cómputo pesado del servidor web, la siguiente evolución recomendada es una cola externa:
+
+- **Celery + Redis**: opción más robusta (retries, backoff, rate limits, routing por cola, observabilidad madura con Flower).
+- **RQ + Redis**: opción más simple para migración incremental, menor complejidad operativa.
+
+Recomendación: iniciar con **RQ** si se busca cambio rápido con bajo riesgo; usar **Celery** si se requiere control fino de QoS y crecimiento multi-cola.
