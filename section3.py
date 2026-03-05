@@ -86,22 +86,6 @@ def show_section3():
 
     regr = load_regression_model(modelo_path, MODEL_CACHE_VERSION)
 
-    with st.expander("Métricas de latencia (carga de modelo)", expanded=False):
-        if st.button("Medir latencia modelo", key="measure_model_latency"):
-            st.session_state["model_latency_metrics"] = measure_model_latency(modelo_path)
-        model_metrics = st.session_state.get("model_latency_metrics")
-        if model_metrics:
-            st.caption(
-                "Sin caché: "
-                f"{model_metrics['uncached_load_s']:.4f}s | "
-                "Primer cacheado: "
-                f"{model_metrics['cached_first_s']:.4f}s | "
-                "Cache hit: "
-                f"{model_metrics['cached_hit_s']:.6f}s | "
-                f"Aceleración: {model_metrics['speedup_x']:.1f}x | "
-                f"Hit ratio: {model_metrics['cache_hit_ratio']:.0%}"
-            )
-
     # Variables que el usuario marcará (0/1)
     # variables = {
     #     'p126d': 'Horno de microondas',

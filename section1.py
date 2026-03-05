@@ -121,32 +121,6 @@ def show_section1():
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # 7) Logos al final
-    st.markdown("---")
-    c1, c2 = st.columns([0.5, 0.5])
-    with c1:
-        st.markdown(
-            """
-            <a href='https://github.com/jcval94chat/movilidad_social' target='_blank'
-               class='app-icon-link'>
-                <span class='icon'>↗</span>
-                <span>Repositorio</span>
-            </a>
-            """,
-            unsafe_allow_html=True
-        )
-    with c2:
-        st.markdown(
-            """
-            <a href='https://github.com/jcval94chat/movilidad_social' target='_blank'
-               class='app-icon-link'>
-                <span class='icon'>↗</span>
-                <span>Repositorio</span>
-            </a>
-            """,
-            unsafe_allow_html=True
-        )
-
 def apply_dynamic_filter(df):
     dff = df.copy()
     for var in st.session_state['selected_vars']:
