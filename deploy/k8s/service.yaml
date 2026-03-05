@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: movilidad-social-svc
+  namespace: movilidad-social
+spec:
+  type: ClusterIP
+  selector:
+    app: movilidad-social
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8501
+  sessionAffinity: None

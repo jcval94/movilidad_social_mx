@@ -348,3 +348,18 @@ Este proyecto busca algo simple pero poderoso:
 **convertir datos de movilidad social en decisiones más informadas, más humanas y más útiles para todos.**
 
 </div>
+
+
+---
+
+## 12) Despliegue escalable en contenedores
+
+Se añadió una base de despliegue productiva en `Dockerfile` y `deploy/k8s/`:
+
+- **Containerización optimizada** con usuario no-root y `HEALTHCHECK`.
+- **Kubernetes con múltiples réplicas** (`Deployment`).
+- **Balanceador con NGINX Ingress** frente al `Service`.
+- **Sin afinidad de sesión** (arquitectura stateless).
+- **Autoscaling** con HPA por CPU, memoria y latencia p95.
+
+Consulta `deploy/k8s/README.md` para pasos de build/push y aplicación de manifiestos.
