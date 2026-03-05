@@ -1,0 +1,11 @@
+.git
+.github
+__pycache__
+*.py[cod]
+*.log
+.venv
+.env
+.streamlit/secrets.toml
+benchmarks/
+README.md
+REFactorizacion_extrema.md
