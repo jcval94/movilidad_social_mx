@@ -683,7 +683,7 @@ def _collapse_questionnaire_after_submit():
 
 
 def _reset_section4_cached_output():
-    for key in ["section4_cached_results", "section4_cached_explanation", "section4_show_results"]:
+    for key in ["section4_payload_json", "section4_show_results"]:
         st.session_state.pop(key, None)
 
 
@@ -764,21 +764,25 @@ def show_section4():
             "results": grouped_results,
             "gemini_api_key": get_gemini_api_key(),
         }
+        app_state_json = json.dumps(app_state, ensure_ascii=False, sort_keys=True)
 
         with st.spinner("Generando diagnóstico..."):
-            explanation = cached_generate_explanation(
-                json.dumps(app_state, ensure_ascii=False, sort_keys=True)
-            )
+            cached_generate_explanation(app_state_json)
 
-        st.session_state["section4_cached_results"] = grouped_results
-        st.session_state["section4_cached_explanation"] = explanation
+        st.session_state["section4_payload_json"] = app_state_json
         st.session_state["section4_show_results"] = True
 
     if not st.session_state.get("section4_show_results"):
         return
 
-    grouped_results = st.session_state.get("section4_cached_results", [])
-    explanation = st.session_state.get("section4_cached_explanation", "")
+    payload_json = st.session_state.get("section4_payload_json")
+    if not payload_json:
+        st.info("No hay resultados en memoria. Ejecuta nuevamente el diagnóstico.")
+        return
+
+    payload = json.loads(payload_json)
+    grouped_results = payload.get("results", [])
+    explanation = cached_generate_explanation(payload_json)
 
     st.write("### Explicación personalizada (IA)")
     st.markdown(explanation)

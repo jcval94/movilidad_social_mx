@@ -73,8 +73,7 @@ def show_section1():
     st.sidebar.markdown("---")
     cambiar_base = st.sidebar.checkbox("Cambiar base", value=False)
     if cambiar_base:
-        show_base_filters(df)
-        df_base = st.session_state.get('df_base', df)
+        df_base = show_base_filters(df)
     else:
         df_base = df
 
@@ -169,7 +168,7 @@ def show_base_filters(df):
         chosen_cats = st.session_state.get(f"base_cats_{var}", [])
         if chosen_cats:
             dff = dff[dff[var].isin(chosen_cats)]
-    st.session_state['df_base'] = dff
+    return dff
 
 def describe_filter_selection(selected_vars, prefix="", base=False):
     parts = []

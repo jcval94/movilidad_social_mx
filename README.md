@@ -98,6 +98,14 @@ La aplicación está construida en **Streamlit** y organizada por módulos:
 - `section4.py` → recomendaciones de cambio por target (KNN + clusters descriptivos).
 - `data_utils.py` y `config.py` → procesamiento base y catálogos.
 
+### Gestión de estado y memoria
+
+- La app guarda en `st.session_state` únicamente filtros/selecciones y metadatos ligeros.
+- Objetos grandes (por ejemplo `DataFrame` completos o binarios extensos) se eliminan automáticamente.
+- Se aplican límites de tamaño para objetos en memoria y para archivos de carga (uploads).
+- En flujos largos o inactivos, la sesión se limpia para evitar crecimiento no controlado.
+- Si se requiere persistencia entre requests/sesiones de usuario, se recomienda mover estado a Redis o base de datos.
+
 > 🔍 El diseño modular permite auditar, extender y mantener cada componente por separado.
 
 ---

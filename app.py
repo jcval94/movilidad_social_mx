@@ -5,6 +5,7 @@ from section1 import show_section1, random_filter_selection as random_section1
 from section2 import show_section2, random_origin_dest as random_section2
 from section3 import show_section3, random_origin_dest as random_section3  # Asegúrate de importar la función correcta
 from section4 import show_section4
+from session_manager import apply_session_guardrails, maybe_show_cleanup_notice
 
 
 def apply_global_styles():
@@ -130,6 +131,8 @@ def apply_global_styles():
 def main():
     st.set_page_config(layout="wide")
     apply_global_styles()
+    apply_session_guardrails()
+    maybe_show_cleanup_notice()
 
     sections = [
         "¿Qué clase soy?",

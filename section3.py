@@ -17,6 +17,11 @@ CLASS_TO_QUINTILES = {
     "Alta": [5]
 }
 
+
+@st.cache_resource(show_spinner=False)
+def load_model(modelo_path):
+    return joblib.load(modelo_path)
+
 def show_section3():
     # Quitar título de la sección
     # st.title("")
@@ -27,11 +32,7 @@ def show_section3():
         st.error(f"No se encontró el archivo de modelo '{modelo_path}'.")
         return
 
-    if 'modelo_regr' not in st.session_state:
-        regr = joblib.load(modelo_path)
-        st.session_state['modelo_regr'] = regr
-    else:
-        regr = st.session_state['modelo_regr']
+    regr = load_model(modelo_path)
 
     # Variables que el usuario marcará (0/1)
     # variables = {
