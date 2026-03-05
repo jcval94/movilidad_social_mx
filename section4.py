@@ -1,5 +1,6 @@
 import re
 import json
+import uuid
 from pathlib import Path
 from textwrap import dedent
 
@@ -15,6 +16,8 @@ from sklearn.preprocessing import StandardScaler
 from utils.diccionarios import get_data_desc, get_nuevo_diccionario
 from utils.func_s4 import construir_descripciones_cluster
 from llm.gemini_explainer import generate_explanation
+from state_backend import get_state, put_state
+from session_manager import validate_payload_limits
 
 BASE_PATH = Path("data")
 TARGET_LABELS = {
@@ -687,7 +690,7 @@ def _collapse_questionnaire_after_submit():
 
 
 def _reset_section4_cached_output():
-    for key in ["section4_cached_results", "section4_cached_explanation", "section4_show_results"]:
+    for key in ["section4_result_key", "section4_show_results"]:
         st.session_state.pop(key, None)
 
 
@@ -731,6 +734,10 @@ def show_section4():
             )
 
     if ejecutar:
+        if not validate_payload_limits(df_respuestas.to_dict(orient="records"), max_items=400):
+            st.error("El cuestionario excede el límite de objetos en memoria para esta sesión.")
+            return
+
         df_valiosas = assets["df_valiosas_dict"][user_selected_target]
         df_resultados = obtener_vecinos_de_mi_respuesta(
             df_respuestas,
@@ -774,15 +781,27 @@ def show_section4():
                 json.dumps(app_state, ensure_ascii=False, sort_keys=True)
             )
 
-        st.session_state["section4_cached_results"] = grouped_results
-        st.session_state["section4_cached_explanation"] = explanation
+        result_key = f"section4:{uuid.uuid4()}"
+        put_state(
+            result_key,
+            {"grouped_results": grouped_results, "explanation": explanation},
+            ttl_s=3600,
+        )
+        st.session_state["section4_result_key"] = result_key
         st.session_state["section4_show_results"] = True
 
     if not st.session_state.get("section4_show_results"):
         return
 
-    grouped_results = st.session_state.get("section4_cached_results", [])
-    explanation = st.session_state.get("section4_cached_explanation", "")
+    result_key = st.session_state.get("section4_result_key")
+    payload = get_state(result_key) if result_key else None
+    if not payload:
+        st.warning("El resultado previo expiró. Ejecuta nuevamente el cuestionario.")
+        st.session_state["section4_show_results"] = False
+        return
+
+    grouped_results = payload.get("grouped_results", [])
+    explanation = payload.get("explanation", "")
 
     st.write("### Explicación personalizada (IA)")
     st.markdown(explanation)

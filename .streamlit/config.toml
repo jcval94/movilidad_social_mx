@@ -1,0 +1,5 @@
+[server]
+# Limita tamaño de archivos subidos por request (MB)
+maxUploadSize = 20
+# Limita tamaño máximo de mensaje WebSocket (MB) para evitar cargas desmedidas en memoria
+maxMessageSize = 20
