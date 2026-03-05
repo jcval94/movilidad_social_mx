@@ -6,6 +6,7 @@ from section2 import show_section2, random_origin_dest as random_section2
 from section3 import show_section3, random_origin_dest as random_section3  # Asegúrate de importar la función correcta
 from section4 import show_section4
 from session_manager import run_session_hygiene
+from state_backend import StateBackendUnavailableError, assert_redis_ready
 
 
 def apply_global_styles():
@@ -140,6 +141,12 @@ def apply_global_styles():
 
 def main():
     st.set_page_config(layout="wide")
+    try:
+        assert_redis_ready()
+    except StateBackendUnavailableError as exc:
+        st.error(f"Backend de estado no disponible: {exc}")
+        st.stop()
+
     apply_global_styles()
     run_session_hygiene()
 

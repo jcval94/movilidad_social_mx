@@ -28,13 +28,25 @@ spec:
             - containerPort: 8501
               name: http
           readinessProbe:
-            httpGet:
-              path: /_stcore/health
-              port: http
+            exec:
+              command:
+                - python
+                - -c
+                - "from state_backend import assert_redis_ready; assert_redis_ready()"
             initialDelaySeconds: 20
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
+          startupProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "from state_backend import assert_redis_ready; assert_redis_ready()"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 12
           livenessProbe:
             httpGet:
               path: /_stcore/health
@@ -56,3 +68,9 @@ spec:
                 secretKeyRef:
                   name: movilidad-social-secrets
                   key: gemini_api_key
+            - name: REDIS_URL
+              value: redis://redis-master.movilidad-social.svc.cluster.local:6379/0
+            - name: REDIS_REQUIRED
+              value: "true"
+            - name: ENV
+              value: production
