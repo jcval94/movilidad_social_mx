@@ -82,14 +82,14 @@ def show_section3():
             .intro-image-card {
                 border-radius: 16px;
                 overflow: hidden;
-                min-height: 360px;
+                min-height: 280px;
                 box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
                 position: relative;
             }
             .intro-image-card img {
                 width: 100%;
                 height: 100%;
-                min-height: 360px;
+                min-height: 280px;
                 object-fit: cover;
                 display: block;
             }
@@ -143,15 +143,37 @@ def show_section3():
             .intro-text-card p:last-child {
                 margin-bottom: 0;
             }
+            .questionnaire-cta {
+                text-align: center;
+                margin: 1rem 0 0.25rem 0;
+            }
+            .questionnaire-cta p {
+                margin: 0;
+                font-size: 1rem;
+                color: #1e3a8a;
+                font-weight: 600;
+            }
+            .questionnaire-arrow {
+                font-size: 2.1rem;
+                line-height: 1;
+                color: #2563eb;
+                animation: bounceArrow 1.2s infinite;
+                display: inline-block;
+                margin-top: 0.25rem;
+            }
+            @keyframes bounceArrow {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(5px); }
+            }
             @media (max-width: 980px) {
                 .intro-grid {
                     grid-template-columns: 1fr;
                 }
                 .intro-image-card {
-                    min-height: 280px;
+                    min-height: 220px;
                 }
                 .intro-image-card img {
-                    min-height: 280px;
+                    min-height: 220px;
                 }
                 .intro-title {
                     font-size: 1.5rem;
@@ -194,13 +216,23 @@ def show_section3():
                         En México, la movilidad social es como un "elevador descompuesto": <strong>el lugar donde naces determina casi por completo a dónde llegarás</strong>. <strong>Casi la mitad de tu éxito económico depende de factores que no elegiste</strong> (como tu código postal, el dinero de tus padres o tu tono de piel), y lo más crudo es que <strong>74 de cada 100 personas que nacen en la pobreza se quedan ahí toda su vida</strong>. En resumen, <strong>el esfuerzo individual rara vez logra vencer a las barreras de un sistema donde, lamentablemente, origen sigue siendo destino</strong>.
                     </p>
                     <p>
-                        Este proyecto busca darte las herramientas a través de la IA, dándote un diagnóstico acorde a tu contexto. Puedes empezar primero conociéndote y revisando en las otras páginas qué hacer para superarte.
+                        Este proyecto te ofrece herramientas impulsadas por IA para brindarte un diagnóstico alineado con tu realidad. Empieza por conocerte y después explora las otras secciones para descubrir rutas concretas que te ayuden a avanzar.
                     </p>
                 </article>
             </section>
             """,
             unsafe_allow_html=True,
         )
+
+    st.markdown(
+        """
+        <div class="questionnaire-cta">
+            <p>Responde el cuestionario aquí</p>
+            <span class="questionnaire-arrow">↓</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown("### Cuestionario")
     st.write("Selecciona los que tienes y dale a **Procesar**:")
