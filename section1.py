@@ -6,7 +6,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from data_utils import load_and_process_data
+from data_utils import load_and_process_data, measure_data_loading_latency
 from config import VAR_CATEGORIES, POSSIBLE_VARS
 
 SMALL_SAMPLE_THRESHOLD = 30
@@ -65,6 +65,21 @@ def show_section1():
 
     # 2) Cargar datos
     df = load_and_process_data()
+
+    with st.sidebar.expander("Métricas de latencia (datos)", expanded=False):
+        if st.button("Medir latencia datos", key="measure_data_latency"):
+            st.session_state["data_latency_metrics"] = measure_data_loading_latency(repeats=1)
+        data_metrics = st.session_state.get("data_latency_metrics")
+        if data_metrics:
+            st.caption(
+                "Sin caché: "
+                f"{data_metrics['uncached_avg_s']:.4f}s | "
+                "Primer cacheado: "
+                f"{data_metrics['cached_first_call_s']:.4f}s | "
+                "Cache hit: "
+                f"{data_metrics['cached_hit_avg_s']:.6f}s | "
+                f"Aceleración: {data_metrics['speedup_x']:.1f}x"
+            )
 
     # 3) Filtro principal
     df_filter = apply_dynamic_filter(df)

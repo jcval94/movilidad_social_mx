@@ -7,6 +7,7 @@ import joblib
 import plotly.express as px
 import os
 import base64
+from time import perf_counter
 
 # Diccionario para mapear clases a quintiles
 CLASS_TO_QUINTILES = {
@@ -16,6 +17,43 @@ CLASS_TO_QUINTILES = {
     "Media Alta": [4],
     "Alta": [5]
 }
+
+
+@st.cache_resource(ttl=3600, max_entries=1, show_spinner=False)
+def load_regression_model(modelo_path: str = "models/modelo_entrenado.joblib"):
+    return joblib.load(modelo_path)
+
+
+@st.cache_data(ttl=1800, max_entries=512, show_spinner=False)
+def infer_user_class_probabilities(datos_usuario: pd.DataFrame):
+    regr = load_regression_model()
+    if hasattr(regr, "predict_proba"):
+        probabilidades = regr.predict_proba(datos_usuario)
+        clases = regr.classes_
+        return probabilidades[0], clases
+    return None, None
+
+
+def measure_model_latency(modelo_path: str = "models/modelo_entrenado.joblib"):
+    load_regression_model.clear()
+    t0 = perf_counter()
+    _ = joblib.load(modelo_path)
+    uncached_load_s = perf_counter() - t0
+
+    t0 = perf_counter()
+    _ = load_regression_model(modelo_path)
+    cached_first_s = perf_counter() - t0
+
+    t0 = perf_counter()
+    _ = load_regression_model(modelo_path)
+    cached_hit_s = perf_counter() - t0
+
+    return {
+        "uncached_load_s": uncached_load_s,
+        "cached_first_s": cached_first_s,
+        "cached_hit_s": cached_hit_s,
+        "speedup_x": uncached_load_s / max(cached_hit_s, 1e-9),
+    }
 
 def show_section3():
     # Quitar título de la sección
@@ -27,11 +65,22 @@ def show_section3():
         st.error(f"No se encontró el archivo de modelo '{modelo_path}'.")
         return
 
-    if 'modelo_regr' not in st.session_state:
-        regr = joblib.load(modelo_path)
-        st.session_state['modelo_regr'] = regr
-    else:
-        regr = st.session_state['modelo_regr']
+    regr = load_regression_model(modelo_path)
+
+    with st.expander("Métricas de latencia (carga de modelo)", expanded=False):
+        if st.button("Medir latencia modelo", key="measure_model_latency"):
+            st.session_state["model_latency_metrics"] = measure_model_latency(modelo_path)
+        model_metrics = st.session_state.get("model_latency_metrics")
+        if model_metrics:
+            st.caption(
+                "Sin caché: "
+                f"{model_metrics['uncached_load_s']:.4f}s | "
+                "Primer cacheado: "
+                f"{model_metrics['cached_first_s']:.4f}s | "
+                "Cache hit: "
+                f"{model_metrics['cached_hit_s']:.6f}s | "
+                f"Aceleración: {model_metrics['speedup_x']:.1f}x"
+            )
 
     # Variables que el usuario marcará (0/1)
     # variables = {
@@ -287,10 +336,8 @@ def show_section3():
                 df_usuario[feat] = 0
         df_usuario = df_usuario[modelo_feats]
 
-        if hasattr(regr, "predict_proba"):
-            probabilidades = regr.predict_proba(df_usuario)
-            clases = regr.classes_
-            probs = probabilidades[0]
+        probs, clases = infer_user_class_probabilities(df_usuario)
+        if probs is not None and clases is not None:
 
             # Mapeo 1..5 => texto
             class_mapping = {

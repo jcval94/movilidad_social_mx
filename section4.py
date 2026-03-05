@@ -32,7 +32,7 @@ EXCLUDED_IMPORTANCE_VARS = {"p133", "CIUO2", "p23"}
 BASE_QUESTIONS = ["p05", "p86", "p33_f"]
 
 
-@st.cache_resource(show_spinner=False)
+@st.cache_resource(ttl=3600, max_entries=2, show_spinner=False)
 def load_section4_assets(base_path: str = "data"):
     base = Path(base_path)
     return {
@@ -127,6 +127,7 @@ def cuestionario_general(data_desc, cols_per_row=3):
     return aplicar_cuestionario_en_columnas(preguntas, cols_per_row)
 
 
+@st.cache_data(ttl=1800, max_entries=256, show_spinner=False)
 def build_cluster_target_frame(df_cluster, user_selected_target):
     prefix = f"{user_selected_target}_"
     rename_map = {
@@ -137,6 +138,7 @@ def build_cluster_target_frame(df_cluster, user_selected_target):
     return df_cluster.rename(columns=rename_map)
 
 
+@st.cache_data(ttl=1800, max_entries=256, show_spinner=False)
 def get_question_pool(df_feature_import, user_selected_target):
     top_vars = [
         x.split("-")[0].strip()
@@ -148,6 +150,7 @@ def get_question_pool(df_feature_import, user_selected_target):
     return sorted(set(BASE_QUESTIONS + top_vars))
 
 
+@st.cache_data(ttl=1800, max_entries=256, show_spinner=False)
 def obtener_vecinos_de_mi_respuesta(
     df_respuestas,
     df_datos_clusterizados,
@@ -393,6 +396,7 @@ def format_grouped_scenarios_card(group_idx, group_data):
     ).strip()
 
 
+@st.cache_data(ttl=1800, max_entries=256, show_spinner=False)
 def format_all_clusters(resultado):
     parsed_clusters = {cluster_id: parse_cluster_description(desc) for cluster_id, desc in resultado.items()}
     return group_clusters_by_variables(parsed_clusters)
