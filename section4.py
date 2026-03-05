@@ -399,7 +399,7 @@ def format_grouped_scenarios_card(group_idx, group_data):
           <h4>Grupo de Variables Clave #{group_idx}</h4>
           <div style="display:flex;align-items:flex-start;gap:12px;overflow-x:auto">
             <div style="min-width:420px;max-width:520px;padding-right:10px">
-              <div class="app-meta">Variables clave (identificador)</div>
+              <div class="app-meta">Para pertenecer a este grupo necesito</div>
               {render_variables_column(group_data.get('variables', []))}
             </div>
             {scenario_cols}
@@ -584,7 +584,7 @@ def render_prioritization_map(grouped_results):
 
     col_plot, col_legend = st.columns([3.2, 1.2])
     with col_legend:
-        show_population = st.button("¿Donde está la población?", key="s4_show_population")
+        show_population = st.button("¿Dónde está la población?", key="s4_show_population", type="primary")
         st.markdown("**Cómo leerla**")
         st.caption("Arriba-derecha = mayor prioridad (alto incremento y alta probabilidad).")
 
@@ -770,7 +770,6 @@ def show_section4():
     job_status = poll_diagnosis(job_id)
     if job_status.get("status") != "completed":
         st.info("Procesando respuestas por la IA ...")
-        st.button("Actualizar estado", key="s4_refresh_job")
         time.sleep(2)
         st.rerun()
         return
