@@ -32,3 +32,11 @@ kubectl apply -f deploy/k8s/hpa.yaml
 - **Autoscaling**: HPA por CPU, memoria y latencia p95 (`http_request_duration_seconds_p95`).
 
 > Para la métrica p95 necesitas exponer métricas Prometheus y mapearlas como custom metric en el cluster (por ejemplo, `prometheus-adapter`).
+
+## 5) Redis obligatorio en producción/horizontal
+
+- Este despliegue **requiere Redis** para estado compartido cuando `ENV=production` o `REDIS_REQUIRED=true`.
+- `deployment.yaml` define `REDIS_URL`, `REDIS_REQUIRED=true` y `ENV=production` para forzar fail-fast si Redis no responde.
+- Si Redis no está disponible, los probes de `startup`/`readiness` fallarán y el pod no aceptará tráfico.
+- **No despliegues en horizontal (replicas > 1) sin Redis**: perderías consistencia de estado entre pods.
+

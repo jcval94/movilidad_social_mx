@@ -8,3 +8,4 @@ plotly
 joblib
 scikit-learn
 google-genai
+redis>=5.0
