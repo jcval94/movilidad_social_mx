@@ -9,6 +9,8 @@ import os
 import base64
 from time import perf_counter
 
+from async_jobs import enqueue_class_inference, poll_class_inference
+
 # Diccionario para mapear clases a quintiles
 CLASS_TO_QUINTILES = {
     "Baja Baja": [1],
@@ -64,8 +66,6 @@ def show_section3():
     if not os.path.exists(modelo_path):
         st.error(f"No se encontró el archivo de modelo '{modelo_path}'.")
         return
-
-    regr = load_regression_model(modelo_path)
 
     with st.expander("Métricas de latencia (carga de modelo)", expanded=False):
         if st.button("Medir latencia modelo", key="measure_model_latency"):
@@ -324,19 +324,29 @@ def show_section3():
 
         df_usuario = pd.DataFrame([datos_usuario])
 
-        # Orden de features
-        if hasattr(regr, 'feature_names_in_'):
-            modelo_feats = list(regr.feature_names_in_)
-        else:
-            modelo_feats = list(variables.keys())
+        job_payload = {"task": "class_inference", "features": datos_usuario}
+        if st.session_state.get("s3_last_payload") != job_payload:
+            st.session_state["s3_last_payload"] = job_payload
+            st.session_state.pop("s3_job_id", None)
 
-        # Asegurar todas las columnas
-        for feat in modelo_feats:
-            if feat not in df_usuario.columns:
-                df_usuario[feat] = 0
-        df_usuario = df_usuario[modelo_feats]
+        if "s3_job_id" not in st.session_state:
+            job = enqueue_class_inference(job_payload)
+            st.session_state["s3_job_id"] = job["job_id"]
 
-        probs, clases = infer_user_class_probabilities(df_usuario)
+        job_status = poll_class_inference(st.session_state["s3_job_id"])
+        if job_status.get("status") != "completed":
+            st.info("Inferencia en ejecución en worker asíncrono.")
+            st.caption(f"Estado actual: {job_status.get('status', 'queued')}")
+            st.progress(35 if job_status.get("status") == "running" else 10)
+            st.button("Actualizar estado inferencia", key="refresh_s3_job")
+            import time
+            time.sleep(1.0)
+            st.rerun()
+            return
+
+        result = job_status.get("result", {})
+        probs = result.get("probabilities")
+        clases = result.get("classes")
         if probs is not None and clases is not None:
 
             # Mapeo 1..5 => texto

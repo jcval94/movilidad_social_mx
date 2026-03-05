@@ -195,3 +195,19 @@ def measure_data_loading_latency(repeats: int = 2):
         "cached_hit_avg_s": cached_hit_avg,
         "speedup_x": uncached_avg / max(cached_hit_avg, 1e-9),
     }
+
+
+def get_data_async_status():
+    """Encola y consulta un job asíncrono para obtener el dataset de movilidad."""
+    from async_jobs import enqueue_data_prep, poll_data_prep
+
+    if "mobility_data_job_id" not in st.session_state:
+        job = enqueue_data_prep()
+        st.session_state["mobility_data_job_id"] = job["job_id"]
+
+    return poll_data_prep(st.session_state["mobility_data_job_id"])
+
+
+def dataframe_from_payload(payload: dict) -> pd.DataFrame:
+    records = payload.get("records", [])
+    return pd.DataFrame.from_records(records)

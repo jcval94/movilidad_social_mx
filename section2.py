@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 
-from data_utils import load_and_process_data
+from data_utils import dataframe_from_payload, get_data_async_status
 
 # Diccionario para mapear clases a quintiles
 CLASS_TO_QUINTILES = {
@@ -40,8 +40,20 @@ def show_section2():
     Evolución Temporal (Sección 2)
     Aplica los filtros de la barra lateral excepto 'generation'.
     """
-    # 1) Cargar y procesar datos
-    df = load_and_process_data()
+    # 1) Cargar y procesar datos en segundo plano
+    data_status = get_data_async_status()
+    if data_status.get("status") != "completed":
+        st.info("Preparando dataset en worker asíncrono. La UI sigue disponible.")
+        st.caption(f"Estado actual: {data_status.get('status', 'queued')}")
+        st.progress(35 if data_status.get("status") == "running" else 10)
+        if st.button("Actualizar estado datos", key="refresh_data_status_s2"):
+            st.rerun()
+        import time
+        time.sleep(1.2)
+        st.rerun()
+        return
+
+    df = dataframe_from_payload(data_status.get("result", {}))
     df = add_cohort_5y_column(df, step=3)
 
     # 2) Filtro excepto generation

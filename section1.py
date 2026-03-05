@@ -6,7 +6,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from data_utils import load_and_process_data, measure_data_loading_latency
+from data_utils import dataframe_from_payload, get_data_async_status, measure_data_loading_latency
 from config import VAR_CATEGORIES, POSSIBLE_VARS
 
 SMALL_SAMPLE_THRESHOLD = 30
@@ -63,8 +63,23 @@ def show_section1():
             default=st.session_state[f"cats_{var}"]
         )
 
-    # 2) Cargar datos
-    df = load_and_process_data()
+    # 2) Cargar datos en segundo plano
+    data_status = get_data_async_status()
+    if data_status.get("status") != "completed":
+        st.info("Preparando dataset en worker asíncrono. La UI sigue disponible.")
+        st.caption(f"Estado actual: {data_status.get('status', 'queued')}")
+        st.progress(35 if data_status.get("status") == "running" else 10)
+        if st.button("Actualizar estado datos", key="refresh_data_status_s1"):
+            st.rerun()
+        time_to_wait = 1.2
+        st.caption(f"Reintentando en {time_to_wait:.1f}s…")
+        import time
+
+        time.sleep(time_to_wait)
+        st.rerun()
+        return
+
+    df = dataframe_from_payload(data_status.get("result", {}))
 
     with st.sidebar.expander("Métricas de latencia (datos)", expanded=False):
         if st.button("Medir latencia datos", key="measure_data_latency"):
