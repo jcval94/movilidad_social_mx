@@ -363,3 +363,44 @@ Se añadió una base de despliegue productiva en `Dockerfile` y `deploy/k8s/`:
 - **Autoscaling** con HPA por CPU, memoria y latencia p95.
 
 Consulta `deploy/k8s/README.md` para pasos de build/push y aplicación de manifiestos.
+
+---
+
+## 12) Procesamiento asíncrono (Sección 4)
+
+Para evitar bloqueos de UI (>1–2s), el diagnóstico de la sección **Pobre a Rico** ahora se ejecuta en cola con **RQ + Redis**.
+
+### Acciones movidas a background
+
+- Cálculo de vecinos/cluster y filtrado de escenarios.
+- Construcción de descripciones por cluster.
+- Generación de explicación con Gemini.
+
+### Flujo
+
+1. Streamlit encola el job con `idempotency_key` (hash del payload).
+2. La app responde de inmediato con estado **"Procesando"** y hace polling cada 2s.
+3. Worker separado consume la cola `diagnostics`.
+4. Resultado/error se persiste en SQLite (`data/job_results.sqlite`) para reutilizar cómputos.
+
+### Timeouts, reintentos e idempotencia
+
+- Timeout por job: `JOB_TIMEOUT_SECONDS` (default: `90`).
+- Reintentos: `JOB_RETRIES` (default: `2`, intervalos 5s y 20s).
+- Idempotencia: `job_id == idempotency_key` para evitar duplicados.
+
+### Ejecutar localmente
+
+```bash
+# 1) Levantar Redis (ejemplo rápido)
+docker run -p 6379:6379 redis:7
+
+# 2) Instalar dependencias
+pip install -r requirements.txt
+
+# 3) Correr worker en terminal separada
+python -m async_jobs.worker
+
+# 4) Correr streamlit
+streamlit run app.py
+```

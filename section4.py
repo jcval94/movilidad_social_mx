@@ -8,6 +8,12 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+
+try:
+    from streamlit_autorefresh import st_autorefresh
+except Exception:
+    def st_autorefresh(*args, **kwargs):
+        return None
 from sklearn.impute import SimpleImputer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
@@ -15,6 +21,7 @@ from sklearn.preprocessing import StandardScaler
 from utils.diccionarios import get_data_desc, get_nuevo_diccionario
 from utils.func_s4 import construir_descripciones_cluster
 from llm.gemini_explainer import generate_explanation
+from async_jobs.queue import enqueue_section4_job, fetch_section4_job_status
 
 BASE_PATH = Path("data")
 TARGET_LABELS = {
@@ -687,7 +694,12 @@ def _collapse_questionnaire_after_submit():
 
 
 def _reset_section4_cached_output():
-    for key in ["section4_cached_results", "section4_cached_explanation", "section4_show_results"]:
+    for key in [
+        "section4_cached_results",
+        "section4_cached_explanation",
+        "section4_show_results",
+        "section4_job_idempotency_key",
+    ]:
         st.session_state.pop(key, None)
 
 
@@ -731,52 +743,76 @@ def show_section4():
             )
 
     if ejecutar:
-        df_valiosas = assets["df_valiosas_dict"][user_selected_target]
-        df_resultados = obtener_vecinos_de_mi_respuesta(
-            df_respuestas,
-            df_cluster_target,
-            df_valiosas,
-            n_vecinos=50,
-        )
-
-        if not df_resultados.empty and "cluster_N_Proba" in df_resultados.columns:
-            df_resultados["nivel_de_confianza_cluster"] = pd.qcut(
-                df_resultados["cluster_N_Proba"],
-                q=4,
-                labels=False,
-                duplicates="drop",
-            )
-
-        df_filtrado = filter_cluster_results(df_resultados)
-
-        resultado = construir_descripciones_cluster(
-            df_filtrado,
-            data_desc_global,
-            get_nuevo_diccionario(),
-            language="es",
-            show_N_probabilidad=True,
-            show_Probabilidad=True,
-        )
-
-        grouped_results = format_all_clusters(resultado)
-
         app_state = {
             "target": user_selected_target,
             "target_label": TARGET_LABELS.get(user_selected_target, user_selected_target),
             "active_filters": get_active_filters_from_session(),
             "questionnaire": df_respuestas.to_dict(orient="records"),
-            "results": grouped_results,
             "gemini_api_key": get_gemini_api_key(),
+            "base_path": str(BASE_PATH),
         }
 
-        with st.spinner("Generando diagnóstico..."):
-            explanation = cached_generate_explanation(
-                json.dumps(app_state, ensure_ascii=False, sort_keys=True)
+        try:
+            queued = enqueue_section4_job(app_state)
+            st.session_state["section4_job_idempotency_key"] = queued["idempotency_key"]
+            st.session_state["section4_show_results"] = False
+            if queued["status"] == "cached":
+                status = fetch_section4_job_status(queued["idempotency_key"])
+                result = status.get("result", {})
+                st.session_state["section4_cached_results"] = result.get("grouped_results", [])
+                st.session_state["section4_cached_explanation"] = result.get("explanation", "")
+                st.session_state["section4_show_results"] = True
+        except Exception:
+            st.warning(
+                "No se pudo conectar a la cola async. Ejecutando diagnóstico en modo síncrono."
+            )
+            df_valiosas = assets["df_valiosas_dict"][user_selected_target]
+            df_resultados = obtener_vecinos_de_mi_respuesta(
+                df_respuestas,
+                df_cluster_target,
+                df_valiosas,
+                n_vecinos=50,
             )
 
-        st.session_state["section4_cached_results"] = grouped_results
-        st.session_state["section4_cached_explanation"] = explanation
-        st.session_state["section4_show_results"] = True
+            if not df_resultados.empty and "cluster_N_Proba" in df_resultados.columns:
+                df_resultados["nivel_de_confianza_cluster"] = pd.qcut(
+                    df_resultados["cluster_N_Proba"],
+                    q=4,
+                    labels=False,
+                    duplicates="drop",
+                )
+
+            df_filtrado = filter_cluster_results(df_resultados)
+            resultado = construir_descripciones_cluster(
+                df_filtrado,
+                data_desc_global,
+                get_nuevo_diccionario(),
+                language="es",
+                show_N_probabilidad=True,
+                show_Probabilidad=True,
+            )
+            grouped_results = format_all_clusters(resultado)
+            app_state["results"] = grouped_results
+            explanation = cached_generate_explanation(json.dumps(app_state, ensure_ascii=False, sort_keys=True))
+
+            st.session_state["section4_cached_results"] = grouped_results
+            st.session_state["section4_cached_explanation"] = explanation
+            st.session_state["section4_show_results"] = True
+
+    job_key = st.session_state.get("section4_job_idempotency_key")
+    if not st.session_state.get("section4_show_results") and job_key:
+        st.info("Procesando diagnóstico en segundo plano... esto puede tardar ~10-60s.")
+        st_autorefresh(interval=2000, key=f"section4_poll_{job_key}")
+        status = fetch_section4_job_status(job_key)
+        if status.get("status") == "finished":
+            result = status.get("result", {})
+            st.session_state["section4_cached_results"] = result.get("grouped_results", [])
+            st.session_state["section4_cached_explanation"] = result.get("explanation", "")
+            st.session_state["section4_show_results"] = True
+            st.rerun()
+        elif status.get("status") == "failed":
+            st.error(f"El job falló: {status.get('error_message', 'error no disponible')}")
+            return
 
     if not st.session_state.get("section4_show_results"):
         return

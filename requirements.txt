@@ -8,3 +8,6 @@ plotly
 joblib
 scikit-learn
 google-genai
+rq
+redis
+streamlit-autorefresh
