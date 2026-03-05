@@ -109,14 +109,14 @@ def parse_cluster_description(raw_desc):
             continue
 
         if not in_variables_section:
-            if stripped.startswith("- Incremento de probabilidad"):
+            if stripped.startswith("- Incremento de probabilidad") or stripped.startswith("- Incremento respecto a la población"):
                 try:
                     incremento = float(stripped.split(":", 1)[1].strip())
                     diff_percent = (incremento - 1.0) * 100
                     summary_data["incremento"] = {"text": f"{diff_percent:+.0f}%"}
                 except Exception:
                     summary_data["incremento"] = {"text": stripped}
-            elif stripped.startswith("- Probabilidad:"):
+            elif stripped.startswith("- Probabilidad:") or stripped.startswith("- Probabilidad final de cambiar de clase:"):
                 summary_data["probabilidad"] = stripped.split(":", 1)[1].strip()
             elif stripped.startswith("- Nivel de confianza"):
                 conf_val = stripped.split(":", 1)[1].strip()

@@ -241,7 +241,7 @@ def parse_cluster_description(raw_desc):
             continue
 
         if not in_variables_section:
-            if stripped.startswith("- Incremento de probabilidad"):
+            if stripped.startswith("- Incremento de probabilidad") or stripped.startswith("- Incremento respecto a la población"):
                 try:
                     incremento = float(stripped.split(":", 1)[1].strip())
                     diff_percent = (incremento - 1.0) * 100
@@ -251,7 +251,7 @@ def parse_cluster_description(raw_desc):
                     }
                 except Exception:
                     summary_data["incremento"] = {"text": stripped, "color": "#666666"}
-            elif stripped.startswith("- Probabilidad:"):
+            elif stripped.startswith("- Probabilidad:") or stripped.startswith("- Probabilidad final de cambiar de clase:"):
                 summary_data["probabilidad"] = stripped.split(":", 1)[1].strip()
             elif stripped.startswith("- Nivel de confianza"):
                 conf_val = stripped.split(":", 1)[1].strip()
@@ -382,9 +382,9 @@ def format_grouped_scenarios_card(group_idx, group_data):
         scenario_cols += f"""
         <div style="min-width:170px;border-left:1px solid #e5e7eb;padding-left:12px;padding-right:8px">
           <div class="app-meta">Escenario {scenario.get('nombre')}</div>
-          <div class="app-meta" style="margin-bottom:2px">Incremento</div>
+          <div class="app-meta" style="margin-bottom:2px">Incremento respecto a la población</div>
           <div style="font-weight:700;color:{incremento.get('color', '#666666')};margin-bottom:8px">{incremento.get('text', 'N/D')}</div>
-          <div class="app-meta" style="margin-bottom:2px">Probabilidad</div>
+          <div class="app-meta" style="margin-bottom:2px">Probabilidad final de cambiar de clase</div>
           <div style="font-weight:700;margin-bottom:8px">{probabilidad}</div>
           <div class="app-meta" style="margin-bottom:2px">Confianza</div>
           <div style="font-weight:700">{confianza}</div>
