@@ -1,6 +1,6 @@
 import re
 import json
-import uuid
+import time
 from pathlib import Path
 from textwrap import dedent
 
@@ -15,9 +15,8 @@ from sklearn.preprocessing import StandardScaler
 
 from utils.diccionarios import get_data_desc, get_nuevo_diccionario
 from utils.func_s4 import construir_descripciones_cluster
-from llm.gemini_explainer import generate_explanation
-from state_backend import get_state, put_state
 from session_manager import validate_payload_limits
+from async_jobs import enqueue_diagnosis, poll_diagnosis
 
 BASE_PATH = Path("data")
 TARGET_LABELS = {
@@ -447,10 +446,6 @@ def get_active_filters_from_session():
     return filters
 
 
-@st.cache_data(ttl=1800, show_spinner=False)
-def cached_generate_explanation(app_state_json: str):
-    return generate_explanation(json.loads(app_state_json))
-
 
 def _parse_percent(value):
     if value is None:
@@ -690,7 +685,7 @@ def _collapse_questionnaire_after_submit():
 
 
 def _reset_section4_cached_output():
-    for key in ["section4_result_key", "section4_show_results"]:
+    for key in ["section4_job_id", "section4_show_results"]:
         st.session_state.pop(key, None)
 
 
@@ -713,10 +708,6 @@ def show_section4():
         st.session_state["section4_form_expanded"] = True
         _reset_section4_cached_output()
 
-    df_cluster_target = build_cluster_target_frame(
-        assets["df_clusterizados_total_origi"],
-        user_selected_target,
-    )
 
     preguntas_lista = get_question_pool(
         assets["df_feature_importances_total"],
@@ -738,70 +729,41 @@ def show_section4():
             st.error("El cuestionario excede el límite de objetos en memoria para esta sesión.")
             return
 
-        df_valiosas = assets["df_valiosas_dict"][user_selected_target]
-        df_resultados = obtener_vecinos_de_mi_respuesta(
-            df_respuestas,
-            df_cluster_target,
-            df_valiosas,
-            n_vecinos=50,
-        )
-
-        if not df_resultados.empty and "cluster_N_Proba" in df_resultados.columns:
-            df_resultados["nivel_de_confianza_cluster"] = pd.qcut(
-                df_resultados["cluster_N_Proba"],
-                q=4,
-                labels=False,
-                duplicates="drop",
-            )
-
-        df_filtrado = filter_cluster_results(df_resultados)
-
-        resultado = construir_descripciones_cluster(
-            df_filtrado,
-            data_desc_global,
-            get_nuevo_diccionario(),
-            language="es",
-            show_N_probabilidad=True,
-            show_Probabilidad=True,
-        )
-
-        grouped_results = format_all_clusters(resultado)
-
         app_state = {
             "target": user_selected_target,
             "target_label": TARGET_LABELS.get(user_selected_target, user_selected_target),
             "active_filters": get_active_filters_from_session(),
             "questionnaire": df_respuestas.to_dict(orient="records"),
-            "results": grouped_results,
             "gemini_api_key": get_gemini_api_key(),
         }
 
-        with st.spinner("Generando diagnóstico..."):
-            explanation = cached_generate_explanation(
-                json.dumps(app_state, ensure_ascii=False, sort_keys=True)
-            )
-
-        result_key = f"section4:{uuid.uuid4()}"
-        put_state(
-            result_key,
-            {"grouped_results": grouped_results, "explanation": explanation},
-            ttl_s=3600,
-        )
-        st.session_state["section4_result_key"] = result_key
+        job = enqueue_diagnosis(app_state)
+        st.session_state["section4_job_id"] = job["job_id"]
         st.session_state["section4_show_results"] = True
 
     if not st.session_state.get("section4_show_results"):
         return
 
-    result_key = st.session_state.get("section4_result_key")
-    payload = get_state(result_key) if result_key else None
-    if not payload:
-        st.warning("El resultado previo expiró. Ejecuta nuevamente el cuestionario.")
+    job_id = st.session_state.get("section4_job_id")
+    if not job_id:
+        st.warning("No hay job activo. Ejecuta nuevamente el cuestionario.")
         st.session_state["section4_show_results"] = False
         return
 
+    job_status = poll_diagnosis(job_id)
+    if job_status.get("status") != "completed":
+        st.info("Procesando diagnóstico en cola. Esta pantalla se actualizará automáticamente.")
+        st.caption(f"Estado actual: {job_status.get('status', 'queued')}")
+        st.button("Actualizar estado", key="s4_refresh_job")
+        time.sleep(2)
+        st.rerun()
+        return
+
+    payload = job_status.get("result", {})
     grouped_results = payload.get("grouped_results", [])
     explanation = payload.get("explanation", "")
+    if payload.get("slow_actions"):
+        st.caption("Acciones >1.5s movidas a worker: " + ", ".join(payload.get("slow_actions", [])))
 
     st.write("### Explicación personalizada (IA)")
     st.markdown(explanation)
