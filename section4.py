@@ -769,8 +769,7 @@ def show_section4():
 
     job_status = poll_diagnosis(job_id)
     if job_status.get("status") != "completed":
-        st.info("Procesando diagnóstico en cola. Esta pantalla se actualizará automáticamente.")
-        st.caption(f"Estado actual: {job_status.get('status', 'queued')}")
+        st.info("Procesando respuestas por la IA ...")
         st.button("Actualizar estado", key="s4_refresh_job")
         time.sleep(2)
         st.rerun()
