@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
+from time import perf_counter
 
 
 def load_and_process_data_uncached():
@@ -159,7 +160,38 @@ def load_and_process_data_uncached():
     return df
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl=3600, max_entries=3, show_spinner=False)
 def load_and_process_data():
     """Versión cacheada para Streamlit."""
     return load_and_process_data_uncached()
+
+
+def measure_data_loading_latency(repeats: int = 2):
+    """Compara latencia de carga sin caché vs primer llamado cacheado vs cache hit."""
+    uncached_times = []
+    for _ in range(repeats):
+        t0 = perf_counter()
+        _ = load_and_process_data_uncached()
+        uncached_times.append(perf_counter() - t0)
+
+    load_and_process_data.clear()
+
+    t0 = perf_counter()
+    _ = load_and_process_data()
+    cached_first_call = perf_counter() - t0
+
+    cached_hit_times = []
+    for _ in range(repeats):
+        t0 = perf_counter()
+        _ = load_and_process_data()
+        cached_hit_times.append(perf_counter() - t0)
+
+    uncached_avg = sum(uncached_times) / len(uncached_times)
+    cached_hit_avg = sum(cached_hit_times) / len(cached_hit_times)
+
+    return {
+        "uncached_avg_s": uncached_avg,
+        "cached_first_call_s": cached_first_call,
+        "cached_hit_avg_s": cached_hit_avg,
+        "speedup_x": uncached_avg / max(cached_hit_avg, 1e-9),
+    }
