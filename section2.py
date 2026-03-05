@@ -163,32 +163,6 @@ def show_section2():
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # 8) Logos finales
-    st.markdown("---")
-    c1, c2 = st.columns([0.5, 0.5])
-    with c1:
-        st.markdown(
-            """
-            <a href='https://github.com/jcval94chat/movilidad_social' target='_blank'
-               class='app-icon-link'>
-                <span class='icon'>↗</span>
-                <span>Repositorio</span>
-            </a>
-            """,
-            unsafe_allow_html=True
-        )
-    with c2:
-        st.markdown(
-            """
-            <a href='https://github.com/jcval94chat/movilidad_social' target='_blank'
-               class='app-icon-link'>
-                <span class='icon'>↗</span>
-                <span>Repositorio</span>
-            </a>
-            """,
-            unsafe_allow_html=True
-        )
-
 def add_cohort_5y_column(df, base_year=2017, step=3):
     def assign_cohort_5y(age):
         if pd.isna(age):
