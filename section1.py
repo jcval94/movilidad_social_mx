@@ -10,6 +10,8 @@ from data_utils import load_and_process_data, measure_data_loading_latency
 from config import VAR_CATEGORIES, POSSIBLE_VARS
 
 SMALL_SAMPLE_THRESHOLD = 30
+FILTER_BLUE = "#87CEEB"
+FILTER_RED = "#FA8072"
 
 def random_filter_selection():
     """
@@ -101,7 +103,7 @@ def show_section1():
         main_title = filter_desc or "Sin Filtro (Base General)"
 
     # 6) Plot interactivo con Plotly
-    fig, sample_sizes = plot_mobility_interactive(df_filter, df_base)
+    fig, sample_sizes, extremos = plot_mobility_interactive(df_filter, df_base)
 
     # Colocamos el título principal arriba de la figura
     # st.markdown("## Movilidad Socioeconómica Q1 vs Q5")
@@ -120,6 +122,33 @@ def show_section1():
         )
 
     st.plotly_chart(fig, use_container_width=True)
+
+    contexto_filtros = obtener_texto_filtros_activos()
+    diff_baja_pp = extremos['pct_inmovilidad_baja'] - extremos['pct_inmovilidad_baja_promedio']
+    diff_alta_pp = extremos['pct_persistencia_alta'] - extremos['pct_persistencia_alta_promedio']
+
+    mensaje_azul = (
+        f"⬆️ Para el perfil ({contexto_filtros}): el {extremos['pct_inmovilidad_baja']:.1f}% "
+        "de quienes nacen en la clase baja se queda ahí "
+        f"({diff_baja_pp:+.1f} pp vs promedio)."
+    )
+    mensaje_rojo = (
+        f"⬆️ Para el perfil ({contexto_filtros}): el {extremos['pct_persistencia_alta']:.1f}% "
+        "de quienes nacen en la clase alta mantiene su posición "
+        f"({diff_alta_pp:+.1f} pp vs promedio)."
+    )
+
+    msg_col_left, msg_col_right = st.columns(2)
+    with msg_col_left:
+        st.markdown(
+            f"<div style='color:{FILTER_BLUE}; font-weight:600;'>{mensaje_azul}</div>",
+            unsafe_allow_html=True,
+        )
+    with msg_col_right:
+        st.markdown(
+            f"<div style='color:{FILTER_RED}; font-weight:600;'>{mensaje_rojo}</div>",
+            unsafe_allow_html=True,
+        )
 
 def apply_dynamic_filter(df):
     dff = df.copy()
@@ -264,7 +293,7 @@ def plot_mobility_interactive(df_filter, df_base):
             x=[quintil_labels.get(k, str(k)) for k in x_q1],
             y=[q1_dist_filter.get(k, 0) for k in x_q1],
             name="Filtro",
-            marker_color="skyblue",
+            marker_color=FILTER_BLUE,
             error_y=dict(
                 type='data',
                 symmetric=False,
@@ -293,7 +322,7 @@ def plot_mobility_interactive(df_filter, df_base):
             x=[quintil_labels.get(k, str(k)) for k in x_q5],
             y=[q5_dist_filter.get(k, 0) for k in x_q5],
             name="Filtro",
-            marker_color="salmon",
+            marker_color=FILTER_RED,
             error_y=dict(
                 type='data',
                 symmetric=False,
@@ -361,4 +390,23 @@ def plot_mobility_interactive(df_filter, df_base):
         'q5_filter_n': q5_filter_n,
     }
 
-    return fig, sample_sizes
+    extremos = {
+        'pct_inmovilidad_baja': float(q1_dist_filter.get(1, 0.0)),
+        'pct_inmovilidad_baja_promedio': float(q1_dist_base.get(1, 0.0)),
+        'pct_persistencia_alta': float(q5_dist_filter.get(5, 0.0)),
+        'pct_persistencia_alta_promedio': float(q5_dist_base.get(5, 0.0)),
+    }
+
+    return fig, sample_sizes, extremos
+
+
+def obtener_texto_filtros_activos():
+    filtros_activos = []
+    for variable in ["generation", "education", "sex"]:
+        valores = st.session_state.get(f"cats_{variable}", [])
+        filtros_activos.extend([valor for valor in valores if valor])
+
+    if not filtros_activos:
+        return "Toda la población"
+
+    return ", ".join(filtros_activos)
