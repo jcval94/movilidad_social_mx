@@ -123,6 +123,16 @@ def apply_global_styles():
             justify-content: center;
             font-size: 12px;
         }
+
+
+        @keyframes subtlePulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.72; }
+        }
+
+        div[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+            animation: subtlePulse 1.6s ease-in-out infinite;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -161,7 +171,7 @@ def main():
                 st.rerun()
 
         with col_btn2:
-            if st.button("🎲 Random", key="random_main", help="Selección aleatoria"):
+            if st.button("🎲 Random", key="random_main", help="Selección aleatoria", type="primary"):
                 # Aplica la lógica de random a Sección 1 (Movilidad)
                 random_section1()
                 # Aplica la lógica de random a Sección 2 (Evolución Temporal)
