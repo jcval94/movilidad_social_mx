@@ -51,6 +51,17 @@ spec:
               cpu: "1"
               memory: "1Gi"
           env:
+            - name: K8S_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: app
+                  resource: limits.cpu
+            - name: DIAG_NODE_TYPE
+              value: "general"
+            - name: DIAG_WORKERS_GENERAL
+              value: "1"
+            - name: MAX_QUEUED_JOBS
+              value: "32"
             - name: GEMINI_API_KEY
               valueFrom:
                 secretKeyRef:
