@@ -768,7 +768,25 @@ def show_section4():
         return
 
     job_status = poll_diagnosis(job_id)
-    if job_status.get("status") != "completed":
+    status = job_status.get("status")
+    if status != "completed":
+        if status in {"failed", "timeout", "expired"}:
+            st.error(
+                "No fue posible generar el diagnóstico con IA. "
+                "Intenta nuevamente en unos minutos."
+            )
+            if job_status.get("error"):
+                st.caption(f"Detalle técnico: {job_status.get('error')}")
+            st.session_state["section4_show_results"] = False
+            st.session_state.pop("section4_job_id", None)
+            return
+
+        if status == "unknown":
+            st.warning("No encontramos el job de diagnóstico. Vuelve a ejecutar el cuestionario.")
+            st.session_state["section4_show_results"] = False
+            st.session_state.pop("section4_job_id", None)
+            return
+
         st.info("Procesando respuestas por la IA ...")
         time.sleep(2)
         st.rerun()
