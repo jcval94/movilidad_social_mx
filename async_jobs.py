@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import socket
 import time
 from concurrent.futures import ProcessPoolExecutor
 from threading import Lock
@@ -13,6 +14,7 @@ _JOB_TIMEOUT_S = int(os.getenv("DIAG_JOB_TIMEOUT_S", "120"))
 _JOB_RETRIES = int(os.getenv("DIAG_JOB_RETRIES", "2"))
 _MAX_QUEUED_JOBS = int(os.getenv("MAX_QUEUED_JOBS", "64"))
 _FUTURE_RETENTION_S = int(os.getenv("DIAG_FUTURE_RETENTION_S", str(_JOB_TTL_S)))
+_ORPHAN_REQUEUE_AFTER_S = int(os.getenv("DIAG_ORPHAN_REQUEUE_AFTER_S", "8"))
 
 
 def _parse_cpu_to_cores(raw_cpu: str | None) -> float | None:
@@ -76,6 +78,10 @@ def _job_meta_key(fingerprint: str) -> str:
     return f"diag:job:{fingerprint}"
 
 
+def _job_payload_key(fingerprint: str) -> str:
+    return f"diag:payload:{fingerprint}"
+
+
 def _publish_metrics(queued: int, running: int) -> None:
     snapshot = {
         "queued": queued,
@@ -86,6 +92,15 @@ def _publish_metrics(queued: int, running: int) -> None:
         "updated_at": time.time(),
     }
     put_state(_METRICS_KEY, snapshot, ttl_s=_JOB_TTL_S)
+
+
+def _submit_job(job_id: str, payload: dict, timeout_s: int, retries: int) -> None:
+    with _FUTURE_LOCK:
+        _FUTURES[job_id] = {
+            "future": _EXECUTOR.submit(_run_with_retry, payload, retries, timeout_s),
+            "created_at": time.time(),
+            "deadline_ts": time.time() + timeout_s,
+        }
 
 
 def _reap_futures() -> tuple[int, int]:
@@ -170,24 +185,21 @@ def enqueue_diagnosis(payload: dict) -> dict:
     if meta and meta.get("status") in {"queued", "running"}:
         return {"job_id": fingerprint, "status": meta.get("status"), "cached": False}
 
+    now = time.time()
     put_state(
         meta_key,
         {
             "status": "queued",
             "attempt": 0,
-            "created_at": time.time(),
+            "created_at": now,
             "timeout_s": _JOB_TIMEOUT_S,
             "retries": _JOB_RETRIES,
         },
         ttl_s=_JOB_TTL_S,
     )
+    put_state(_job_payload_key(fingerprint), payload, ttl_s=_JOB_TTL_S)
 
-    with _FUTURE_LOCK:
-        _FUTURES[fingerprint] = {
-            "future": _EXECUTOR.submit(_run_with_retry, payload, _JOB_RETRIES, _JOB_TIMEOUT_S),
-            "created_at": time.time(),
-            "deadline_ts": time.time() + _JOB_TIMEOUT_S,
-        }
+    _submit_job(fingerprint, payload, _JOB_TIMEOUT_S, _JOB_RETRIES)
 
     _publish_metrics(queued + 1, 0)
 
@@ -244,5 +256,30 @@ def poll_diagnosis(job_id: str) -> dict:
             _METRICS["failed"] += 1
             put_state(_job_meta_key(job_id), {"status": "failed", "error": str(exc)}, ttl_s=_JOB_TTL_S)
             return {"status": "failed", "error": str(exc)}
+
+    meta_status = meta.get("status")
+    if future is None and meta_status == "queued":
+        created_at = float(meta.get("created_at") or 0)
+        age_s = time.time() - created_at if created_at else 0
+        if created_at and age_s >= _ORPHAN_REQUEUE_AFTER_S:
+            payload = get_state(_job_payload_key(job_id))
+            if payload:
+                put_state(
+                    _job_meta_key(job_id),
+                    {
+                        **meta,
+                        "status": "queued",
+                        "recovered_at": time.time(),
+                        "recovered_by": f"{socket.gethostname()}:{os.getpid()}",
+                    },
+                    ttl_s=_JOB_TTL_S,
+                )
+                _submit_job(
+                    job_id,
+                    payload,
+                    int(meta.get("timeout_s") or _JOB_TIMEOUT_S),
+                    int(meta.get("retries") or _JOB_RETRIES),
+                )
+                return {"status": "queued", "meta": get_state(_job_meta_key(job_id))}
 
     return {"status": meta.get("status", "queued"), "meta": meta}
