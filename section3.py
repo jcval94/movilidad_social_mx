@@ -7,9 +7,7 @@ import joblib
 import plotly.express as px
 import os
 import base64
-import warnings
 from time import perf_counter
-from sklearn.exceptions import InconsistentVersionWarning
 
 MODEL_CACHE_TTL_SECONDS = 12 * 60 * 60
 MODEL_CACHE_VERSION = "v2"
@@ -32,9 +30,7 @@ def load_regression_model(
     cache_version: str = MODEL_CACHE_VERSION,
 ):
     _ = cache_version
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
-        return joblib.load(modelo_path)
+    return joblib.load(modelo_path)
 
 
 @st.cache_data(ttl=PREDICTION_CACHE_TTL_SECONDS, max_entries=512, show_spinner=False)
@@ -54,9 +50,7 @@ def infer_user_class_probabilities(
 def measure_model_latency(modelo_path: str = "models/modelo_entrenado.joblib"):
     load_regression_model.clear()
     t0 = perf_counter()
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
-        _ = joblib.load(modelo_path)
+    _ = joblib.load(modelo_path)
     uncached_load_s = perf_counter() - t0
 
     t0 = perf_counter()

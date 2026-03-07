@@ -1,7 +1,6 @@
 import re
 import json
 import time
-import warnings
 from pathlib import Path
 from textwrap import dedent
 
@@ -10,7 +9,6 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-from sklearn.exceptions import InconsistentVersionWarning
 from sklearn.impute import SimpleImputer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
@@ -46,13 +44,11 @@ DATA_CACHE_VERSION = "v2"
 def load_section4_assets(base_path: str = "data", cache_version: str = RESOURCE_CACHE_VERSION):
     _ = cache_version
     base = Path(base_path)
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
-        return {
-            "df_valiosas_dict": joblib.load(base / "df_valiosas_dict.joblib"),
-            "df_feature_importances_total": joblib.load(base / "df_feature_importances_total.joblib"),
-            "df_clusterizados_total_origi": pd.read_csv(base / "df_clusterizados_total_origi.csv"),
-        }
+    return {
+        "df_valiosas_dict": joblib.load(base / "df_valiosas_dict.joblib"),
+        "df_feature_importances_total": joblib.load(base / "df_feature_importances_total.joblib"),
+        "df_clusterizados_total_origi": pd.read_csv(base / "df_clusterizados_total_origi.csv"),
+    }
 
 
 def generar_lista_preguntas(data_desc):
