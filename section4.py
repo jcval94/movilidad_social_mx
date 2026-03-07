@@ -1,6 +1,7 @@
 import re
 import json
 import time
+import warnings
 from pathlib import Path
 from textwrap import dedent
 
@@ -9,6 +10,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from sklearn.exceptions import InconsistentVersionWarning
 from sklearn.impute import SimpleImputer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
@@ -44,11 +46,13 @@ DATA_CACHE_VERSION = "v2"
 def load_section4_assets(base_path: str = "data", cache_version: str = RESOURCE_CACHE_VERSION):
     _ = cache_version
     base = Path(base_path)
-    return {
-        "df_valiosas_dict": joblib.load(base / "df_valiosas_dict.joblib"),
-        "df_feature_importances_total": joblib.load(base / "df_feature_importances_total.joblib"),
-        "df_clusterizados_total_origi": pd.read_csv(base / "df_clusterizados_total_origi.csv"),
-    }
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
+        return {
+            "df_valiosas_dict": joblib.load(base / "df_valiosas_dict.joblib"),
+            "df_feature_importances_total": joblib.load(base / "df_feature_importances_total.joblib"),
+            "df_clusterizados_total_origi": pd.read_csv(base / "df_clusterizados_total_origi.csv"),
+        }
 
 
 def generar_lista_preguntas(data_desc):
@@ -696,12 +700,32 @@ def render_prioritization_map(grouped_results):
 
     return show_population
 
+
+
+def _append_diagnostic_log(event: str, details: str = ""):
+    logs = st.session_state.setdefault("section4_diagnostic_logs", [])
+    timestamp = time.strftime("%H:%M:%S")
+    message = f"[{timestamp}] {event}"
+    if details:
+        message = f"{message} | {details}"
+    logs.append(message)
+    if len(logs) > 40:
+        del logs[:-40]
+
+
+def _render_diagnostic_logs():
+    logs = st.session_state.get("section4_diagnostic_logs", [])
+    if not logs:
+        return
+    with st.expander("Logs del diagnóstico", expanded=False):
+        st.code("\n".join(logs), language="text")
+
 def _collapse_questionnaire_after_submit():
     st.session_state["section4_form_expanded"] = False
 
 
 def _reset_section4_cached_output():
-    for key in ["section4_job_id", "section4_show_results"]:
+    for key in ["section4_job_id", "section4_show_results", "section4_diagnostic_logs"]:
         st.session_state.pop(key, None)
 
 
@@ -757,9 +781,12 @@ def show_section4():
         job = enqueue_diagnosis(app_state)
         st.session_state["section4_job_id"] = job["job_id"]
         st.session_state["section4_show_results"] = True
+        _append_diagnostic_log("Diagnóstico enviado", f"job_id={job.get('job_id')} status={job.get('status')} cached={job.get('cached')}")
 
     if not st.session_state.get("section4_show_results"):
         return
+
+    _render_diagnostic_logs()
 
     job_id = st.session_state.get("section4_job_id")
     if not job_id:
@@ -769,6 +796,7 @@ def show_section4():
 
     job_status = poll_diagnosis(job_id)
     status = job_status.get("status")
+    _append_diagnostic_log("Estado del job", f"job_id={job_id} status={status}")
     if status != "completed":
         if status in {"failed", "timeout", "expired"}:
             st.error(
@@ -777,24 +805,41 @@ def show_section4():
             )
             if job_status.get("error"):
                 st.caption(f"Detalle técnico: {job_status.get('error')}")
+                _append_diagnostic_log("Error en worker", str(job_status.get("error")))
             st.session_state["section4_show_results"] = False
             st.session_state.pop("section4_job_id", None)
             return
 
         if status == "unknown":
             st.warning("No encontramos el job de diagnóstico. Vuelve a ejecutar el cuestionario.")
+            _append_diagnostic_log("Job no encontrado", f"job_id={job_id}")
             st.session_state["section4_show_results"] = False
             st.session_state.pop("section4_job_id", None)
             return
 
+        meta = job_status.get("meta", {})
         st.info("Procesando respuestas por la IA ...")
+        if meta:
+            st.caption(f"Intento: {meta.get('attempt', '-')} | Estado interno: {meta.get('status', status)}")
+        _append_diagnostic_log("Aún procesando", f"meta={meta}")
         time.sleep(2)
         st.rerun()
         return
 
     payload = job_status.get("result", {})
+    _append_diagnostic_log("Diagnóstico completado", f"clusters={len(payload.get('grouped_results', []))}")
     grouped_results = payload.get("grouped_results", [])
     explanation = payload.get("explanation", "")
+    if payload.get("timings"):
+        timings_text = ", ".join([f"{k}={v}s" for k, v in payload.get("timings", {}).items()])
+        st.caption("Tiempos del worker: " + timings_text)
+        _append_diagnostic_log("Tiempos", timings_text)
+
+    if payload.get("worker_debug"):
+        worker_debug = payload.get("worker_debug", {})
+        st.caption("Debug worker: " + ", ".join([f"{k}={v}" for k, v in worker_debug.items()]))
+        _append_diagnostic_log("Debug worker", str(worker_debug))
+
     if payload.get("slow_actions"):
         st.caption("Acciones >1.5s movidas a worker: " + ", ".join(payload.get("slow_actions", [])))
 

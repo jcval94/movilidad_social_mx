@@ -7,7 +7,9 @@ import joblib
 import plotly.express as px
 import os
 import base64
+import warnings
 from time import perf_counter
+from sklearn.exceptions import InconsistentVersionWarning
 
 MODEL_CACHE_TTL_SECONDS = 12 * 60 * 60
 MODEL_CACHE_VERSION = "v2"
@@ -30,7 +32,9 @@ def load_regression_model(
     cache_version: str = MODEL_CACHE_VERSION,
 ):
     _ = cache_version
-    return joblib.load(modelo_path)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
+        return joblib.load(modelo_path)
 
 
 @st.cache_data(ttl=PREDICTION_CACHE_TTL_SECONDS, max_entries=512, show_spinner=False)
@@ -50,7 +54,9 @@ def infer_user_class_probabilities(
 def measure_model_latency(modelo_path: str = "models/modelo_entrenado.joblib"):
     load_regression_model.clear()
     t0 = perf_counter()
-    _ = joblib.load(modelo_path)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
+        _ = joblib.load(modelo_path)
     uncached_load_s = perf_counter() - t0
 
     t0 = perf_counter()
@@ -382,7 +388,7 @@ def show_section3():
                 uniformtext_minsize=8,
                 uniformtext_mode='hide'
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             # Clase con mayor probabilidad
             idx_pred = np.argmax(probs)

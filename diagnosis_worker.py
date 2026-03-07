@@ -1,9 +1,11 @@
 import json
 import time
+import warnings
 from pathlib import Path
 
 import joblib
 import pandas as pd
+from sklearn.exceptions import InconsistentVersionWarning
 from sklearn.impute import SimpleImputer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
@@ -19,11 +21,13 @@ BASE_QUESTIONS = ["p05", "p86", "p33_f"]
 
 def load_assets(base_path: str = "data"):
     base = Path(base_path)
-    return {
-        "df_valiosas_dict": joblib.load(base / "df_valiosas_dict.joblib"),
-        "df_feature_importances_total": joblib.load(base / "df_feature_importances_total.joblib"),
-        "df_clusterizados_total_origi": pd.read_csv(base / "df_clusterizados_total_origi.csv"),
-    }
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
+        return {
+            "df_valiosas_dict": joblib.load(base / "df_valiosas_dict.joblib"),
+            "df_feature_importances_total": joblib.load(base / "df_feature_importances_total.joblib"),
+            "df_clusterizados_total_origi": pd.read_csv(base / "df_clusterizados_total_origi.csv"),
+        }
 
 
 def build_cluster_target_frame(df_cluster, user_selected_target):
@@ -209,6 +213,13 @@ def compute_diagnosis(payload_json: str) -> dict:
 
     grouped_results = format_all_clusters(resultado)
 
+    worker_debug = {
+        "question_count": int(len(df_respuestas)),
+        "neighbors_rows": int(len(df_resultados)),
+        "filtered_rows": int(len(df_filtrado)),
+        "cluster_groups": int(len(grouped_results)),
+    }
+
     t3 = time.perf_counter()
     payload_with_results = {**payload, "results": grouped_results}
     explanation = generate_explanation(payload_with_results)
@@ -221,4 +232,5 @@ def compute_diagnosis(payload_json: str) -> dict:
         "explanation": explanation,
         "timings": timings,
         "slow_actions": slow_actions,
+        "worker_debug": worker_debug,
     }
