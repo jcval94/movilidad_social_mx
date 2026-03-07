@@ -382,7 +382,7 @@ def show_section3():
                 uniformtext_minsize=8,
                 uniformtext_mode='hide'
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             # Clase con mayor probabilidad
             idx_pred = np.argmax(probs)

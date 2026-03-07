@@ -161,7 +161,7 @@ def show_section2():
             visible=True
         )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 def add_cohort_5y_column(df, base_year=2017, step=3):
     def assign_cohort_5y(age):

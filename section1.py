@@ -107,7 +107,7 @@ def show_section1():
             "Interpretar con cautela."
         )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     contexto_filtros = obtener_texto_filtros_activos()
     diff_baja_pp = extremos['pct_inmovilidad_baja'] - extremos['pct_inmovilidad_baja_promedio']

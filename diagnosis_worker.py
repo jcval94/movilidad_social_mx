@@ -209,6 +209,13 @@ def compute_diagnosis(payload_json: str) -> dict:
 
     grouped_results = format_all_clusters(resultado)
 
+    worker_debug = {
+        "question_count": int(len(df_respuestas)),
+        "neighbors_rows": int(len(df_resultados)),
+        "filtered_rows": int(len(df_filtrado)),
+        "cluster_groups": int(len(grouped_results)),
+    }
+
     t3 = time.perf_counter()
     payload_with_results = {**payload, "results": grouped_results}
     explanation = generate_explanation(payload_with_results)
@@ -221,4 +228,5 @@ def compute_diagnosis(payload_json: str) -> dict:
         "explanation": explanation,
         "timings": timings,
         "slow_actions": slow_actions,
+        "worker_debug": worker_debug,
     }
