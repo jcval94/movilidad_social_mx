@@ -775,9 +775,19 @@ def show_section4():
         }
 
         job = enqueue_diagnosis(app_state)
+        _append_diagnostic_log("Diagnóstico enviado", f"job_id={job.get('job_id')} status={job.get('status')} cached={job.get('cached')}")
+
+        if job.get("status") in {"busy", "failed"}:
+            reason = job.get("reason") or job.get("error") or "sin detalle"
+            st.error("No fue posible enviar el diagnóstico en este momento. Intenta nuevamente.")
+            st.caption(f"Detalle técnico: {reason}")
+            _append_diagnostic_log("Error al enviar diagnóstico", str(reason))
+            st.session_state["section4_show_results"] = False
+            st.session_state.pop("section4_job_id", None)
+            return
+
         st.session_state["section4_job_id"] = job["job_id"]
         st.session_state["section4_show_results"] = True
-        _append_diagnostic_log("Diagnóstico enviado", f"job_id={job.get('job_id')} status={job.get('status')} cached={job.get('cached')}")
 
     if not st.session_state.get("section4_show_results"):
         return
