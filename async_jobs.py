@@ -126,6 +126,21 @@ def _submit_job(job_id: str, payload: dict, timeout_s: int, retries: int) -> boo
     return True
 
 
+def _persist_completed_job(job_id: str, result: dict) -> None:
+    meta_key = _job_meta_key(job_id)
+    put_state(_result_cache_key(job_id), result, ttl_s=_JOB_TTL_S)
+    existing_meta = get_state(meta_key) or {}
+    put_state(
+        meta_key,
+        {
+            **existing_meta,
+            "status": "completed",
+            "completed_at": time.time(),
+        },
+        ttl_s=_JOB_TTL_S,
+    )
+
+
 def _reap_futures() -> tuple[int, int]:
     now = time.time()
     queued = 0
@@ -147,7 +162,8 @@ def _reap_futures() -> tuple[int, int]:
 
             if future.done():
                 try:
-                    future.result(timeout=0)
+                    result = future.result(timeout=0)
+                    _persist_completed_job(job_id, result)
                 except TimeoutError:
                     _log_job_event("timeout_result", job_id, reason="future_timeout")
                     _METRICS["timeout"] += 1
@@ -284,6 +300,7 @@ def poll_diagnosis(job_id: str) -> dict:
     if future is not None and future.done():
         try:
             result = future.result(timeout=0)
+            _persist_completed_job(job_id, result)
             return {"status": "completed", "result": result}
         except Exception as exc:
             _METRICS["failed"] += 1
