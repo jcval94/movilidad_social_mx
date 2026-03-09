@@ -4,7 +4,7 @@ import logging
 import os
 import socket
 import time
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from threading import Lock
 
 from state_backend import get_state, put_state
@@ -63,11 +63,43 @@ def _resolve_diag_workers() -> int:
     max_workers_by_limit = max(1, int(cpu_limit))
     return min(requested_workers, max_workers_by_limit)
 
-_EXECUTOR = ProcessPoolExecutor(max_workers=_resolve_diag_workers())
+_EXECUTOR: ProcessPoolExecutor | ThreadPoolExecutor | None = None
+_EXECUTOR_PID: int | None = None
+_EXECUTOR_LOCK = Lock()
 _FUTURES = {}
 _FUTURE_LOCK = Lock()
 _METRICS = {"failed": 0, "timeout": 0, "busy_rejected": 0}
 _METRICS_KEY = "diag:metrics:queue"
+
+
+def _resolve_executor_kind() -> str:
+    """
+    Selecciona el tipo de ejecutor.
+
+    Por estabilidad usamos hilos por defecto; ProcessPool sólo con opt-in explícito
+    porque en algunos despliegues WSGI/multiproceso los jobs quedan en queued.
+    """
+    raw_kind = (os.getenv("DIAG_EXECUTOR_KIND") or "thread").strip().lower()
+    if raw_kind in {"process", "proc", "multiprocess"}:
+        return "process"
+    return "thread"
+
+
+def _get_executor() -> ProcessPoolExecutor | ThreadPoolExecutor:
+    global _EXECUTOR, _EXECUTOR_PID
+
+    current_pid = os.getpid()
+    with _EXECUTOR_LOCK:
+        if _EXECUTOR is None or _EXECUTOR_PID != current_pid:
+            if _EXECUTOR is not None:
+                _EXECUTOR.shutdown(wait=False, cancel_futures=True)
+            executor_kind = _resolve_executor_kind()
+            workers = _resolve_diag_workers()
+            executor_cls = ProcessPoolExecutor if executor_kind == "process" else ThreadPoolExecutor
+            _EXECUTOR = executor_cls(max_workers=workers)
+            _LOGGER.info("diag_executor_initialized | kind=%s workers=%s pid=%s", executor_kind, workers, current_pid)
+            _EXECUTOR_PID = current_pid
+    return _EXECUTOR
 
 
 def _job_fingerprint(payload: dict) -> str:
@@ -110,7 +142,7 @@ def _publish_metrics(queued: int, running: int) -> None:
 
 def _submit_job(job_id: str, payload: dict, timeout_s: int, retries: int) -> bool:
     try:
-        future = _EXECUTOR.submit(_run_with_retry, payload, retries, timeout_s)
+        future = _get_executor().submit(_run_with_retry, payload, retries, timeout_s)
     except Exception as exc:
         _log_job_event("submit_failed", job_id, error=exc, timeout_s=timeout_s, retries=retries)
         return False
