@@ -4,7 +4,7 @@ import logging
 import os
 import socket
 import time
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from threading import Lock
 
 from state_backend import get_state, put_state
@@ -63,11 +63,31 @@ def _resolve_diag_workers() -> int:
     max_workers_by_limit = max(1, int(cpu_limit))
     return min(requested_workers, max_workers_by_limit)
 
-_EXECUTOR = ProcessPoolExecutor(max_workers=_resolve_diag_workers())
+_EXECUTOR: ProcessPoolExecutor | ThreadPoolExecutor | None = None
+_EXECUTOR_PID: int | None = None
+_EXECUTOR_LOCK = Lock()
 _FUTURES = {}
 _FUTURE_LOCK = Lock()
 _METRICS = {"failed": 0, "timeout": 0, "busy_rejected": 0}
 _METRICS_KEY = "diag:metrics:queue"
+
+
+def _should_use_process_pool() -> bool:
+    return bool((os.getenv("REDIS_URL") or "").strip())
+
+
+def _get_executor() -> ProcessPoolExecutor | ThreadPoolExecutor:
+    global _EXECUTOR, _EXECUTOR_PID
+
+    current_pid = os.getpid()
+    with _EXECUTOR_LOCK:
+        if _EXECUTOR is None or _EXECUTOR_PID != current_pid:
+            if _EXECUTOR is not None:
+                _EXECUTOR.shutdown(wait=False, cancel_futures=True)
+            executor_cls = ProcessPoolExecutor if _should_use_process_pool() else ThreadPoolExecutor
+            _EXECUTOR = executor_cls(max_workers=_resolve_diag_workers())
+            _EXECUTOR_PID = current_pid
+    return _EXECUTOR
 
 
 def _job_fingerprint(payload: dict) -> str:
@@ -110,7 +130,7 @@ def _publish_metrics(queued: int, running: int) -> None:
 
 def _submit_job(job_id: str, payload: dict, timeout_s: int, retries: int) -> bool:
     try:
-        future = _EXECUTOR.submit(_run_with_retry, payload, retries, timeout_s)
+        future = _get_executor().submit(_run_with_retry, payload, retries, timeout_s)
     except Exception as exc:
         _log_job_event("submit_failed", job_id, error=exc, timeout_s=timeout_s, retries=retries)
         return False
