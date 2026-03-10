@@ -18,6 +18,9 @@ def apply_global_styles():
             --ui-border: #e5e7eb;
             --ui-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
             --ui-shadow-hover: 0 4px 14px rgba(15, 23, 42, 0.10);
+            --ui-surface: var(--secondary-background-color, #ffffff);
+            --ui-text: var(--text-color, #111827);
+            --ui-muted-text: color-mix(in srgb, var(--ui-text) 62%, transparent);
         }
 
         .stButton > button,
@@ -66,7 +69,14 @@ def apply_global_styles():
             border-radius: 10px !important;
             border: 1px solid var(--ui-border) !important;
             box-shadow: none !important;
-            background: #ffffff;
+            background: var(--ui-surface);
+            color: var(--ui-text);
+        }
+        div[data-baseweb="select"] input,
+        div[data-baseweb="select"] span,
+        div[data-baseweb="input"] input,
+        textarea {
+            color: var(--ui-text) !important;
         }
         div[data-baseweb="select"] > div:focus-within,
         div[data-baseweb="input"] > div:focus-within,
@@ -92,23 +102,23 @@ def apply_global_styles():
             border-radius: 12px;
             padding: 14px;
             margin-bottom: 14px;
-            background: #ffffff;
+            background: var(--ui-surface);
             box-shadow: var(--ui-shadow);
         }
         .app-card h4 {
             margin: 0 0 10px 0;
-            color: #111827;
+            color: var(--ui-text);
             font-size: 1rem;
         }
         .app-meta {
             font-size: 0.82rem;
-            color: #6b7280;
+            color: var(--ui-muted-text);
             margin-bottom: 8px;
             font-weight: 500;
         }
         .app-icon-link {
             text-decoration:none;
-            color:#0f172a;
+            color:var(--ui-text);
             font-weight:500;
             display:inline-flex;
             align-items:center;
