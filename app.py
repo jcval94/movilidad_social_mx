@@ -21,6 +21,20 @@ def apply_global_styles():
             --ui-surface: var(--secondary-background-color, #ffffff);
             --ui-text: var(--text-color, #111827);
             --ui-muted-text: color-mix(in srgb, var(--ui-text) 62%, transparent);
+            --ui-switcher-bg: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+            --ui-chip-bg: #ffffff;
+            --ui-chip-border: #cbd5e1;
+            --ui-icon-border: #d1d5db;
+        }
+
+        [data-theme="dark"] {
+            --ui-border: color-mix(in srgb, var(--ui-text) 22%, transparent);
+            --ui-shadow: 0 1px 2px rgba(2, 6, 23, 0.45);
+            --ui-shadow-hover: 0 5px 16px rgba(2, 6, 23, 0.55);
+            --ui-switcher-bg: linear-gradient(135deg, rgba(30, 41, 59, 0.75) 0%, rgba(49, 46, 129, 0.55) 100%);
+            --ui-chip-bg: color-mix(in srgb, var(--ui-surface) 88%, #000000 12%);
+            --ui-chip-border: color-mix(in srgb, var(--ui-text) 28%, transparent);
+            --ui-icon-border: color-mix(in srgb, var(--ui-text) 32%, transparent);
         }
 
         .stButton > button,
@@ -37,7 +51,7 @@ def apply_global_styles():
         .stLinkButton > a:hover {
             transform: translateY(-1px);
             box-shadow: var(--ui-shadow-hover);
-            border-color: #cbd5e1;
+            border-color: var(--ui-chip-border);
         }
         .stButton > button:focus,
         .stFormSubmitButton > button:focus,
@@ -128,7 +142,7 @@ def apply_global_styles():
             width: 22px;
             height: 22px;
             border-radius: 999px;
-            border: 1px solid #d1d5db;
+            border: 1px solid var(--ui-icon-border);
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -140,7 +154,7 @@ def apply_global_styles():
             border-radius: 14px;
             padding: 16px 18px 10px;
             margin: 0 0 18px;
-            background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+            background: var(--ui-switcher-bg);
             box-shadow: var(--ui-shadow);
         }
         .section-switcher-title {
@@ -154,10 +168,10 @@ def apply_global_styles():
             flex-wrap: wrap;
         }
         div[data-testid="stRadio"] label {
-            border: 1px solid #cbd5e1;
+            border: 1px solid var(--ui-chip-border);
             border-radius: 999px;
             padding: 0.45rem 0.85rem;
-            background: #ffffff;
+            background: var(--ui-chip-bg);
             transition: all 0.2s ease;
             min-height: 2.35rem;
             display: inline-flex;

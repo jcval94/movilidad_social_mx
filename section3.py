@@ -118,9 +118,33 @@ def show_section3():
     st.markdown(
         """
         <style>
+            :root {
+                --intro-bg: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+                --intro-border: #e2e8f0;
+                --intro-card-bg: #ffffff;
+                --intro-card-text: #0f172a;
+                --intro-muted-text: #1f2937;
+                --intro-eyebrow-text: #1d4ed8;
+                --intro-eyebrow-bg: #dbeafe;
+                --intro-title-text: #111827;
+                --intro-accent: #2563eb;
+                --intro-cta-text: #1e3a8a;
+            }
+            [data-theme="dark"] {
+                --intro-bg: linear-gradient(180deg, rgba(30, 41, 59, 0.7) 0%, rgba(17, 24, 39, 0.88) 100%);
+                --intro-border: color-mix(in srgb, var(--text-color, #e5e7eb) 26%, transparent);
+                --intro-card-bg: color-mix(in srgb, var(--secondary-background-color, #111827) 88%, #000000 12%);
+                --intro-card-text: var(--text-color, #f9fafb);
+                --intro-muted-text: color-mix(in srgb, var(--text-color, #f9fafb) 86%, transparent);
+                --intro-eyebrow-text: #bfdbfe;
+                --intro-eyebrow-bg: rgba(30, 64, 175, 0.34);
+                --intro-title-text: var(--text-color, #f9fafb);
+                --intro-accent: #93c5fd;
+                --intro-cta-text: #bfdbfe;
+            }
             .intro-wrapper {
-                background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-                border: 1px solid #e2e8f0;
+                background: var(--intro-bg);
+                border: 1px solid var(--intro-border);
                 border-radius: 22px;
                 box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
                 padding: 1.35rem;
@@ -154,11 +178,11 @@ def show_section3():
                 pointer-events: none;
             }
             .intro-text-card {
-                background: #ffffff;
-                border: 1px solid #e2e8f0;
+                background: var(--intro-card-bg);
+                border: 1px solid var(--intro-border);
                 border-radius: 16px;
                 padding: 1.35rem 1.4rem;
-                color: #0f172a;
+                color: var(--intro-card-text);
             }
             .intro-eyebrow {
                 display: inline-block;
@@ -166,8 +190,8 @@ def show_section3():
                 letter-spacing: 0.10em;
                 font-weight: 700;
                 text-transform: uppercase;
-                color: #1d4ed8;
-                background: #dbeafe;
+                color: var(--intro-eyebrow-text);
+                background: var(--intro-eyebrow-bg);
                 border-radius: 999px;
                 padding: 0.25rem 0.6rem;
                 margin-bottom: 0.7rem;
@@ -177,20 +201,20 @@ def show_section3():
                 line-height: 1.15;
                 letter-spacing: -0.02em;
                 margin: 0 0 0.85rem 0;
-                color: #111827;
+                color: var(--intro-title-text);
             }
             .intro-divider {
                 width: 68px;
                 height: 3px;
                 border-radius: 99px;
-                background: #2563eb;
+                background: var(--intro-accent);
                 margin-bottom: 1rem;
             }
             .intro-text-card p {
                 margin: 0 0 0.9rem 0;
                 line-height: 1.75;
                 font-size: 1.04rem;
-                color: #1f2937;
+                color: var(--intro-muted-text);
                 text-align: justify;
             }
             .intro-text-card p:last-child {
@@ -203,13 +227,13 @@ def show_section3():
             .questionnaire-cta p {
                 margin: 0;
                 font-size: 1rem;
-                color: #1e3a8a;
+                color: var(--intro-cta-text);
                 font-weight: 600;
             }
             .questionnaire-arrow {
                 font-size: 2.1rem;
                 line-height: 1;
-                color: #2563eb;
+                color: var(--intro-accent);
                 animation: bounceArrow 1.2s infinite;
                 display: inline-block;
                 margin-top: 0.25rem;
