@@ -135,6 +135,55 @@ def apply_global_styles():
             font-size: 12px;
         }
 
+        .section-switcher {
+            border: 1px solid var(--ui-border);
+            border-radius: 14px;
+            padding: 16px 18px 10px;
+            margin: 0 0 18px;
+            background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+            box-shadow: var(--ui-shadow);
+        }
+        .section-switcher-title {
+            margin: 0;
+            color: var(--ui-text);
+            font-size: 1.02rem;
+            font-weight: 700;
+        }
+        div[data-testid="stRadio"] > div {
+            gap: 0.45rem;
+            flex-wrap: wrap;
+        }
+        div[data-testid="stRadio"] label {
+            border: 1px solid #cbd5e1;
+            border-radius: 999px;
+            padding: 0.45rem 0.85rem;
+            background: #ffffff;
+            transition: all 0.2s ease;
+            min-height: 2.35rem;
+            display: inline-flex;
+            align-items: center;
+        }
+        div[data-testid="stRadio"] label:hover {
+            border-color: #6366f1;
+            box-shadow: 0 3px 10px rgba(99, 102, 241, 0.15);
+            transform: translateY(-1px);
+        }
+        div[data-testid="stRadio"] label:has(input:checked) {
+            border-color: #4338ca;
+            background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+            color: #ffffff;
+            box-shadow: 0 5px 16px rgba(67, 56, 202, 0.32);
+        }
+        div[data-testid="stRadio"] label:has(input:checked) p {
+            color: #ffffff !important;
+            font-weight: 700;
+        }
+        div[data-testid="stRadio"] p {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
 
         @keyframes subtlePulse {
             0%, 100% { opacity: 1; }
@@ -161,19 +210,27 @@ def main():
     run_session_hygiene()
 
     sections = [
-        "¿Qué clase soy?",
-        "Pobre a Rico",
-        "Movilidad",
-        "Evolución Temporal",
+        "👤 ¿Qué clase soy?",
+        "🚀 Pobre a Rico",
+        "📊 Movilidad",
+        "📅 Evolución Temporal",
     ]
+    st.markdown(
+        """
+        <div class="section-switcher">
+            <p class="section-switcher-title">Explora una ruta</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     selected_section = st.radio(
-        "Secciones",
+        "Navegación principal",
         options=sections,
         horizontal=True,
         label_visibility="collapsed",
     )
 
-    show_sidebar_filters = selected_section in {"Movilidad", "Evolución Temporal"}
+    show_sidebar_filters = selected_section in {"📊 Movilidad", "📅 Evolución Temporal"}
 
     # -----------------------------------------------------------------
     # BARRA LATERAL (parte superior): Botones Refresh y Random
@@ -199,11 +256,11 @@ def main():
 
         st.sidebar.subheader("Filtro actual (filtro principal):")
 
-    if selected_section == "¿Qué clase soy?":
+    if selected_section == "👤 ¿Qué clase soy?":
         show_section3()
-    elif selected_section == "Pobre a Rico":
+    elif selected_section == "🚀 Pobre a Rico":
         show_section4()
-    elif selected_section == "Movilidad":
+    elif selected_section == "📊 Movilidad":
         show_section1()
     else:
         show_section2()
