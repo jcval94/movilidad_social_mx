@@ -72,6 +72,14 @@ _METRICS = {"failed": 0, "timeout": 0, "busy_rejected": 0}
 _METRICS_KEY = "diag:metrics:queue"
 
 
+def _merge_job_meta(job_id: str, updates: dict, *, ttl_s: int = _JOB_TTL_S) -> dict:
+    meta_key = _job_meta_key(job_id)
+    current = get_state(meta_key) or {}
+    merged = {**current, **updates, "updated_at": time.time()}
+    put_state(meta_key, merged, ttl_s=ttl_s)
+    return merged
+
+
 def _should_use_process_pool() -> bool:
     return bool((os.getenv("REDIS_URL") or "").strip())
 
@@ -141,6 +149,17 @@ def _submit_job(job_id: str, payload: dict, timeout_s: int, retries: int) -> boo
             "created_at": time.time(),
             "deadline_ts": time.time() + timeout_s,
         }
+
+    _merge_job_meta(
+        job_id,
+        {
+            "status": "queued",
+            "submitted_at": time.time(),
+            "worker_owner": f"{socket.gethostname()}:{os.getpid()}",
+            "timeout_s": timeout_s,
+            "retries": retries,
+        },
+    )
 
     _log_job_event("submitted", job_id, timeout_s=timeout_s, retries=retries)
     return True
@@ -245,6 +264,7 @@ def enqueue_diagnosis(payload: dict) -> dict:
         return {"job_id": fingerprint, "status": "completed", "cached": True}
 
     meta_key = _job_meta_key(fingerprint)
+
     meta = get_state(meta_key)
     if meta and meta.get("status") in {"queued", "running"}:
         _log_job_event("deduplicated_active", fingerprint, status=meta.get("status"))
@@ -259,6 +279,7 @@ def enqueue_diagnosis(payload: dict) -> dict:
             "created_at": now,
             "timeout_s": _JOB_TIMEOUT_S,
             "retries": _JOB_RETRIES,
+            "updated_at": now,
         },
         ttl_s=_JOB_TTL_S,
     )
@@ -284,23 +305,35 @@ def _run_with_retry(payload: dict, retries: int, timeout_s: int) -> dict:
 
     for attempt in range(1, attempts + 1):
         if time.time() - started_at > timeout_s:
-            put_state(meta_key, {"status": "timeout", "attempt": attempt, "timeout_s": timeout_s}, ttl_s=_JOB_TTL_S)
+            _merge_job_meta(fingerprint, {"status": "timeout", "attempt": attempt, "timeout_s": timeout_s})
             raise TimeoutError("job timeout exceeded")
-        put_state(meta_key, {"status": "running", "attempt": attempt, "timeout_s": _JOB_TIMEOUT_S, "retries": retries}, ttl_s=_JOB_TTL_S)
+        _merge_job_meta(
+            fingerprint,
+            {
+                "status": "running",
+                "attempt": attempt,
+                "timeout_s": _JOB_TIMEOUT_S,
+                "retries": retries,
+                "started_at": time.time(),
+            },
+        )
         try:
             result = compute_diagnosis(json.dumps(payload, ensure_ascii=False, sort_keys=True))
             if time.time() - started_at > timeout_s:
-                put_state(meta_key, {"status": "timeout", "attempt": attempt, "timeout_s": timeout_s}, ttl_s=_JOB_TTL_S)
+                _merge_job_meta(fingerprint, {"status": "timeout", "attempt": attempt, "timeout_s": timeout_s})
                 raise TimeoutError("job timeout exceeded")
             put_state(_result_cache_key(fingerprint), result, ttl_s=_JOB_TTL_S)
-            put_state(meta_key, {"status": "completed", "attempt": attempt}, ttl_s=_JOB_TTL_S)
+            _merge_job_meta(fingerprint, {"status": "completed", "attempt": attempt, "completed_at": time.time()})
             return result
         except Exception as exc:
             last_error = str(exc)
-            put_state(meta_key, {"status": "retrying", "attempt": attempt, "error": last_error}, ttl_s=_JOB_TTL_S)
+            _merge_job_meta(
+                fingerprint,
+                {"status": "retrying", "attempt": attempt, "error": last_error, "last_error_at": time.time()},
+            )
             time.sleep(min(2**attempt, 8))
 
-    put_state(meta_key, {"status": "failed", "error": last_error}, ttl_s=_JOB_TTL_S)
+    _merge_job_meta(fingerprint, {"status": "failed", "error": last_error, "failed_at": time.time()})
     raise RuntimeError(last_error or "unknown job failure")
 
 
@@ -330,22 +363,24 @@ def poll_diagnosis(job_id: str) -> dict:
 
     meta_status = meta.get("status")
     created_at = float(meta.get("created_at") or 0)
+    updated_at = float(meta.get("updated_at") or created_at or 0)
     timeout_s = int(meta.get("timeout_s") or _JOB_TIMEOUT_S)
     age_s = time.time() - created_at if created_at else 0
 
-    if meta_status in {"queued", "running", "retrying"} and created_at:
+    if meta_status in {"queued", "running", "retrying"} and (created_at or updated_at):
         max_wait_s = timeout_s + _QUEUE_STUCK_GRACE_S
-        if age_s >= max_wait_s:
+        wait_age_s = age_s if created_at else (time.time() - updated_at)
+        if wait_age_s >= max_wait_s:
             _METRICS["timeout"] += 1
             timeout_meta = {
                 **meta,
                 "status": "timeout",
                 "error": "job exceeded max queue wait",
-                "age_s": round(age_s, 2),
+                "age_s": round(wait_age_s, 2),
                 "timeout_s": timeout_s,
             }
             put_state(_job_meta_key(job_id), timeout_meta, ttl_s=_JOB_TTL_S)
-            _log_job_event("timeout_poll", job_id, status=meta_status, age_s=round(age_s,2), timeout_s=timeout_s)
+            _log_job_event("timeout_poll", job_id, status=meta_status, age_s=round(wait_age_s,2), timeout_s=timeout_s)
             return {"status": "timeout", "meta": timeout_meta, "error": timeout_meta["error"]}
 
     if future is None and meta_status == "queued":
@@ -406,4 +441,13 @@ def poll_diagnosis(job_id: str) -> dict:
             _METRICS["failed"] += 1
             return {"status": "failed", "meta": missing_payload_meta, "error": missing_payload_meta["error"]}
 
-    return {"status": meta.get("status", "queued"), "meta": meta}
+    latest_meta = get_state(_job_meta_key(job_id)) or meta
+    if meta_status == "queued" and future is None:
+        _log_job_event(
+            "queued_without_future",
+            job_id,
+            age_s=round(age_s, 2),
+            requeue_count=latest_meta.get("requeue_count"),
+            worker_owner=latest_meta.get("worker_owner"),
+        )
+    return {"status": latest_meta.get("status", "queued"), "meta": latest_meta}

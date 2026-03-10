@@ -827,6 +827,16 @@ def show_section4():
         st.info("Procesando respuestas por la IA ...")
         if meta:
             st.caption(f"Intento: {meta.get('attempt', '-')} | Estado interno: {meta.get('status', status)}")
+            diagnostic_fields = {
+                "created_at": meta.get("created_at"),
+                "updated_at": meta.get("updated_at"),
+                "submitted_at": meta.get("submitted_at"),
+                "worker_owner": meta.get("worker_owner"),
+                "requeue_count": meta.get("requeue_count", 0),
+                "recovered_by": meta.get("recovered_by"),
+                "error": meta.get("error"),
+            }
+            st.caption("Trazas del job: " + " | ".join([f"{k}={v}" for k, v in diagnostic_fields.items() if v is not None]))
         _append_diagnostic_log("Aún procesando", f"meta={meta}")
         time.sleep(2)
         st.rerun()
