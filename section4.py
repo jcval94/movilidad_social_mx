@@ -30,6 +30,9 @@ TARGET_LABELS = {
     "OBJ_subieron": "Ascendieron",
     "OBJ_bajaron": "Descendieron",
 }
+
+# Mantener logs de diagnóstico disponibles para depuración sin mostrarlos al usuario final.
+SHOW_SECTION4_DEBUG_LOGS = False
 EXCLUDED_IMPORTANCE_VARS = {"p133", "CIUO2", "p23"}
 BASE_QUESTIONS = ["p05", "p86", "p33_f"]
 
@@ -710,6 +713,8 @@ def _append_diagnostic_log(event: str, details: str = ""):
 
 
 def _render_diagnostic_logs():
+    if not SHOW_SECTION4_DEBUG_LOGS:
+        return
     logs = st.session_state.get("section4_diagnostic_logs", [])
     if not logs:
         return
@@ -780,7 +785,8 @@ def show_section4():
         if job.get("status") in {"busy", "failed"}:
             reason = job.get("reason") or job.get("error") or "sin detalle"
             st.error("No fue posible enviar el diagnóstico en este momento. Intenta nuevamente.")
-            st.caption(f"Detalle técnico: {reason}")
+            if SHOW_SECTION4_DEBUG_LOGS:
+                st.caption(f"Detalle técnico: {reason}")
             _append_diagnostic_log("Error al enviar diagnóstico", str(reason))
             st.session_state["section4_show_results"] = False
             st.session_state.pop("section4_job_id", None)
@@ -809,7 +815,7 @@ def show_section4():
                 "No fue posible generar el diagnóstico con IA. "
                 "Intenta nuevamente en unos minutos."
             )
-            if job_status.get("error"):
+            if SHOW_SECTION4_DEBUG_LOGS and job_status.get("error"):
                 st.caption(f"Detalle técnico: {job_status.get('error')}")
                 _append_diagnostic_log("Error en worker", str(job_status.get("error")))
             st.session_state["section4_show_results"] = False
@@ -825,7 +831,7 @@ def show_section4():
 
         meta = job_status.get("meta", {})
         st.info("Procesando respuestas por la IA ...")
-        if meta:
+        if SHOW_SECTION4_DEBUG_LOGS and meta:
             st.caption(f"Intento: {meta.get('attempt', '-')} | Estado interno: {meta.get('status', status)}")
             diagnostic_fields = {
                 "created_at": meta.get("created_at"),
@@ -846,17 +852,17 @@ def show_section4():
     _append_diagnostic_log("Diagnóstico completado", f"clusters={len(payload.get('grouped_results', []))}")
     grouped_results = payload.get("grouped_results", [])
     explanation = payload.get("explanation", "")
-    if payload.get("timings"):
+    if SHOW_SECTION4_DEBUG_LOGS and payload.get("timings"):
         timings_text = ", ".join([f"{k}={v}s" for k, v in payload.get("timings", {}).items()])
         st.caption("Tiempos del worker: " + timings_text)
         _append_diagnostic_log("Tiempos", timings_text)
 
-    if payload.get("worker_debug"):
+    if SHOW_SECTION4_DEBUG_LOGS and payload.get("worker_debug"):
         worker_debug = payload.get("worker_debug", {})
         st.caption("Debug worker: " + ", ".join([f"{k}={v}" for k, v in worker_debug.items()]))
         _append_diagnostic_log("Debug worker", str(worker_debug))
 
-    if payload.get("slow_actions"):
+    if SHOW_SECTION4_DEBUG_LOGS and payload.get("slow_actions"):
         st.caption("Acciones >1.5s movidas a worker: " + ", ".join(payload.get("slow_actions", [])))
 
     st.write("### Explicación personalizada (IA)")
