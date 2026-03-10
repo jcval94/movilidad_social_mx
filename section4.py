@@ -435,13 +435,13 @@ def render_variables_column(variables):
     variables_html = ""
     for item in variables:
         extras_html = "".join(
-            f"<li style='margin-top:4px;color:#4b5563;font-size:0.9rem'>{extra}</li>"
+            f"<li style='margin-top:4px;color:var(--ui-muted-text);font-size:0.9rem'>{extra}</li>"
             for extra in item.get("extras", [])
         )
         variables_html += (
             "<li style='margin-bottom:10px'>"
             f"<strong>{item.get('descripcion', 'Variable')}</strong><br>"
-            f"<span style='color:#374151'>{item.get('categorias', 'N/D')}</span>"
+            f"<span style='color:var(--ui-text)'>{item.get('categorias', 'N/D')}</span>"
             f"<ul style='margin-top:5px'>{extras_html}</ul>"
             "</li>"
         )
@@ -501,6 +501,20 @@ def has_low_reliability(groups):
             if confidence == "baja":
                 return True
     return False
+
+
+def filter_groups_with_key_variables(groups):
+    filtered_groups = []
+    for group in groups:
+        variables = group.get("variables", [])
+        has_key_variables = any(
+            str(var.get("descripcion", "")).strip() and str(var.get("categorias", "")).strip()
+            for var in variables
+            if isinstance(var, dict)
+        )
+        if has_key_variables:
+            filtered_groups.append(group)
+    return filtered_groups
 
 
 def filter_cluster_results(df):
@@ -936,6 +950,7 @@ def show_section4():
     payload = job_status.get("result", {})
     _append_diagnostic_log("Diagnóstico completado", f"clusters={len(payload.get('grouped_results', []))}")
     grouped_results = payload.get("grouped_results", [])
+    grouped_results = filter_groups_with_key_variables(grouped_results)
     explanation = payload.get("explanation", "")
     if SHOW_SECTION4_DEBUG_LOGS and payload.get("timings"):
         timings_text = ", ".join([f"{k}={v}s" for k, v in payload.get("timings", {}).items()])
@@ -952,6 +967,10 @@ def show_section4():
 
     st.write("### Explicación personalizada (IA)")
     st.markdown(explanation)
+
+    if not grouped_results:
+        st.info("No encontramos grupos con variables clave para este diagnóstico.")
+        return
 
     render_prioritization_map(grouped_results)
 
