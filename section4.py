@@ -137,7 +137,7 @@ def _render_question_header(descripcion, variable):
     st.markdown(
         (
             f"**{descripcion}** "
-            f"<span style=\"font-size:0.82rem;color:#6b7280;font-weight:500;\">v: {variable}</span>"
+            f"<span style=\"font-size:0.82rem;color:var(--ui-muted-text);font-weight:500;\">v: {variable}</span>"
         ),
         unsafe_allow_html=True,
     )
@@ -413,10 +413,14 @@ def normalize_variable_signature(variables):
 def group_clusters_by_variables(parsed_clusters):
     grouped = {}
     for cluster_name, cluster_data in parsed_clusters.items():
-        signature = normalize_variable_signature(cluster_data.get("variables", []))
+        variables = cluster_data.get("variables", [])
+        if not variables:
+            continue
+
+        signature = normalize_variable_signature(variables)
         if signature not in grouped:
             grouped[signature] = {
-                "variables": cluster_data.get("variables", []),
+                "variables": variables,
                 "scenarios": [],
             }
         grouped[signature]["scenarios"].append(
@@ -435,13 +439,13 @@ def render_variables_column(variables):
     variables_html = ""
     for item in variables:
         extras_html = "".join(
-            f"<li style='margin-top:4px;color:#4b5563;font-size:0.9rem'>{extra}</li>"
+            f"<li style='margin-top:4px;color:var(--ui-muted-text);font-size:0.9rem'>{extra}</li>"
             for extra in item.get("extras", [])
         )
         variables_html += (
             "<li style='margin-bottom:10px'>"
             f"<strong>{item.get('descripcion', 'Variable')}</strong><br>"
-            f"<span style='color:#374151'>{item.get('categorias', 'N/D')}</span>"
+            f"<span style='color:var(--ui-text)'>{item.get('categorias', 'N/D')}</span>"
             f"<ul style='margin-top:5px'>{extras_html}</ul>"
             "</li>"
         )
@@ -458,7 +462,7 @@ def format_grouped_scenarios_card(group_idx, group_data):
         obs = summary.get("obs", "N/D")
 
         scenario_cols += f"""
-        <div style="min-width:170px;border-left:1px solid #e5e7eb;padding-left:12px;padding-right:8px">
+        <div style="min-width:170px;border-left:1px solid var(--ui-border);padding-left:12px;padding-right:8px">
           <div class="app-meta">Escenario {scenario.get('nombre')}</div>
           <div class="app-meta" style="margin-bottom:2px">Incremento respecto a la población</div>
           <div style="font-weight:700;color:{incremento.get('color', '#666666')};margin-bottom:8px">{incremento.get('text', 'N/D')}</div>

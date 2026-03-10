@@ -119,8 +119,8 @@ def show_section3():
         """
         <style>
             .intro-wrapper {
-                background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-                border: 1px solid #e2e8f0;
+                background: linear-gradient(180deg, color-mix(in srgb, var(--ui-surface) 96%, #dbeafe 4%) 0%, var(--ui-surface) 100%);
+                border: 1px solid var(--ui-border);
                 border-radius: 22px;
                 box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
                 padding: 1.35rem;
@@ -154,11 +154,11 @@ def show_section3():
                 pointer-events: none;
             }
             .intro-text-card {
-                background: #ffffff;
-                border: 1px solid #e2e8f0;
+                background: var(--ui-surface);
+                border: 1px solid var(--ui-border);
                 border-radius: 16px;
                 padding: 1.35rem 1.4rem;
-                color: #0f172a;
+                color: var(--ui-text);
             }
             .intro-eyebrow {
                 display: inline-block;
@@ -166,8 +166,8 @@ def show_section3():
                 letter-spacing: 0.10em;
                 font-weight: 700;
                 text-transform: uppercase;
-                color: #1d4ed8;
-                background: #dbeafe;
+                color: color-mix(in srgb, var(--ui-text) 82%, #60a5fa 18%);
+                background: color-mix(in srgb, var(--ui-surface) 70%, #2563eb 30%);
                 border-radius: 999px;
                 padding: 0.25rem 0.6rem;
                 margin-bottom: 0.7rem;
@@ -177,7 +177,7 @@ def show_section3():
                 line-height: 1.15;
                 letter-spacing: -0.02em;
                 margin: 0 0 0.85rem 0;
-                color: #111827;
+                color: var(--ui-text);
             }
             .intro-divider {
                 width: 68px;
@@ -190,7 +190,7 @@ def show_section3():
                 margin: 0 0 0.9rem 0;
                 line-height: 1.75;
                 font-size: 1.04rem;
-                color: #1f2937;
+                color: var(--ui-text);
                 text-align: justify;
             }
             .intro-text-card p:last-child {
@@ -203,7 +203,7 @@ def show_section3():
             .questionnaire-cta p {
                 margin: 0;
                 font-size: 1rem;
-                color: #1e3a8a;
+                color: color-mix(in srgb, var(--ui-text) 84%, #60a5fa 16%);
                 font-weight: 600;
             }
             .questionnaire-arrow {
