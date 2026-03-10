@@ -224,7 +224,7 @@ def main():
         unsafe_allow_html=True,
     )
     selected_section = st.radio(
-        "Navegación principal",
+        "",
         options=sections,
         horizontal=True,
         label_visibility="collapsed",
