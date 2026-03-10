@@ -54,8 +54,52 @@ def load_section4_assets(base_path: str = "data", cache_version: str = RESOURCE_
     }
 
 
-def generar_lista_preguntas(data_desc):
+def _extract_numeric_bounds(info):
+    vals = info.get("Valores", [])
+    if not vals:
+        return None, None
+
+    numeric_vals = []
+    for item in vals:
+        if isinstance(item, (int, float)):
+            numeric_vals.append(float(item))
+
+    if numeric_vals:
+        return int(min(numeric_vals)), int(max(numeric_vals))
+
+    for item in vals:
+        if isinstance(item, str):
+            match = re.search(r"(-?\d+)\s*[-a]\s*(-?\d+)", item)
+            if match:
+                lo, hi = int(match.group(1)), int(match.group(2))
+                return min(lo, hi), max(lo, hi)
+    return None, None
+
+
+def _get_default_numeric_map(df_cluster_target, data_desc):
+    defaults = {}
+    for var, info in data_desc.items():
+        if var not in df_cluster_target.columns:
+            continue
+
+        series = pd.to_numeric(df_cluster_target[var], errors="coerce").dropna()
+        if series.empty:
+            continue
+
+        guess = int(round(float(series.median())))
+        min_value, max_value = _extract_numeric_bounds(info)
+        if min_value is not None:
+            guess = max(min_value, guess)
+        if max_value is not None:
+            guess = min(max_value, guess)
+        defaults[var] = guess
+    return defaults
+
+
+def generar_lista_preguntas(data_desc, default_numeric_map=None):
     preguntas = []
+    default_numeric_map = default_numeric_map or {}
+
     for var, info in data_desc.items():
         desc = info.get("Descripción", var)
         vals = info.get("Valores", [])
@@ -70,7 +114,22 @@ def generar_lista_preguntas(data_desc):
                 }
             )
         else:
-            preguntas.append({"variable": var, "descripcion": desc, "tipo": "numeric"})
+            min_value, max_value = _extract_numeric_bounds(info)
+            default_value = default_numeric_map.get(var, min_value if min_value is not None else 0)
+            if min_value is not None:
+                default_value = max(min_value, default_value)
+            if max_value is not None:
+                default_value = min(max_value, default_value)
+            preguntas.append(
+                {
+                    "variable": var,
+                    "descripcion": desc,
+                    "tipo": "numeric",
+                    "default": int(default_value),
+                    "min_value": min_value,
+                    "max_value": max_value,
+                }
+            )
     return preguntas
 
 
@@ -93,11 +152,24 @@ def preguntar_opciones_streamlit(i, variable, descripcion, opciones):
     return cod, opciones[cod]
 
 
-def preguntar_numero_streamlit(i, variable, descripcion):
+def preguntar_numero_streamlit(i, variable, descripcion, default_value=0, min_value=None, max_value=None):
     key_uid = f"num_{variable}_{i}"
     _render_question_header(descripcion, variable)
-    val = st.number_input(" ", value=0.0, step=1.0, key=key_uid, label_visibility="collapsed")
-    return val, str(val)
+    input_kwargs = {
+        "label": " ",
+        "value": int(default_value),
+        "step": 1,
+        "key": key_uid,
+        "label_visibility": "collapsed",
+        "format": "%d",
+    }
+    if min_value is not None:
+        input_kwargs["min_value"] = int(min_value)
+    if max_value is not None:
+        input_kwargs["max_value"] = int(max_value)
+
+    val = st.number_input(**input_kwargs)
+    return int(val), str(int(val))
 
 
 def aplicar_cuestionario_en_columnas(preguntas, cols_per_row=3):
@@ -122,6 +194,9 @@ def aplicar_cuestionario_en_columnas(preguntas, cols_per_row=3):
                         idx,
                         pregunta["variable"],
                         pregunta["descripcion"],
+                        pregunta.get("default", 0),
+                        pregunta.get("min_value"),
+                        pregunta.get("max_value"),
                     )
             respuestas.append(
                 {
@@ -134,8 +209,8 @@ def aplicar_cuestionario_en_columnas(preguntas, cols_per_row=3):
     return pd.DataFrame(respuestas)
 
 
-def cuestionario_general(data_desc, cols_per_row=3):
-    preguntas = generar_lista_preguntas(data_desc)
+def cuestionario_general(data_desc, default_numeric_map=None, cols_per_row=3):
+    preguntas = generar_lista_preguntas(data_desc, default_numeric_map=default_numeric_map)
     return aplicar_cuestionario_en_columnas(preguntas, cols_per_row)
 
 
@@ -729,6 +804,10 @@ def _reset_section4_cached_output():
     for key in ["section4_job_id", "section4_show_results", "section4_diagnostic_logs"]:
         st.session_state.pop(key, None)
 
+    questionnaire_keys = [k for k in st.session_state.keys() if k.startswith("num_") or k.startswith("opt_")]
+    for key in questionnaire_keys:
+        st.session_state.pop(key, None)
+
 
 def show_section4():
     assets = load_section4_assets(str(BASE_PATH), RESOURCE_CACHE_VERSION)
@@ -757,10 +836,16 @@ def show_section4():
     )
     data_desc_global = get_data_desc()
     data_desc_usable = {k: data_desc_global[k] for k in preguntas_lista if k in data_desc_global}
+    df_cluster_target = build_cluster_target_frame(
+        assets["df_clusterizados_total_origi"],
+        user_selected_target,
+        DATA_CACHE_VERSION,
+    )
+    default_numeric_map = _get_default_numeric_map(df_cluster_target, data_desc_usable)
 
     with st.expander("Cuestionario", expanded=st.session_state.get("section4_form_expanded", True)):
         with st.form("cuestionario_form"):
-            df_respuestas = cuestionario_general(data_desc_usable, cols_per_row=3)
+            df_respuestas = cuestionario_general(data_desc_usable, default_numeric_map=default_numeric_map, cols_per_row=3)
             ejecutar = st.form_submit_button(
                 "Conocer mi diagnóstico",
                 on_click=_collapse_questionnaire_after_submit,
