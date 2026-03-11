@@ -153,7 +153,7 @@ def apply_global_styles():
             gap: 0.45rem;
             flex-wrap: wrap;
         }
-        div[data-testid="stRadio"] label {
+        div[data-testid="stRadio"] div[role="radiogroup"] > label {
             border: 1px solid #cbd5e1;
             border-radius: 999px;
             padding: 0.45rem 0.85rem;
@@ -163,18 +163,18 @@ def apply_global_styles():
             display: inline-flex;
             align-items: center;
         }
-        div[data-testid="stRadio"] label:hover {
+        div[data-testid="stRadio"] div[role="radiogroup"] > label:hover {
             border-color: #6366f1;
             box-shadow: 0 3px 10px rgba(99, 102, 241, 0.15);
             transform: translateY(-1px);
         }
-        div[data-testid="stRadio"] label:has(input:checked) {
+        div[data-testid="stRadio"] div[role="radiogroup"] > label:has(input:checked) {
             border-color: #4338ca;
             background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
             color: #ffffff;
             box-shadow: 0 5px 16px rgba(67, 56, 202, 0.32);
         }
-        div[data-testid="stRadio"] label:has(input:checked) p {
+        div[data-testid="stRadio"] div[role="radiogroup"] > label:has(input:checked) p {
             color: #ffffff !important;
             font-weight: 700;
         }
