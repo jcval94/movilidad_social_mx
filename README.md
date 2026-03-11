@@ -253,17 +253,21 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Configurar Gemini (explicación personalizada IA)
+### Configurar Gemini + respaldo con OpenAI (explicación personalizada IA)
 
-Agrega la clave en `.streamlit/secrets.toml` (o en los secretos de Streamlit Cloud). La app acepta ambos nombres (`gemini_api_key` o `GEMINI_API_KEY`):
+Agrega las claves en `.streamlit/secrets.toml` (o en los secretos de Streamlit Cloud). Gemini se usa como principal y, si falla, la app intenta OpenAI con un modelo económico (`gpt-5-nano` por defecto, configurable con `OPENAI_MODEL_NAME`).
 
 ```toml
 gemini_api_key = "TU_CLAVE"
+openai_api_key = "TU_CLAVE_OPENAI"
 # o equivalente:
 # GEMINI_API_KEY = "TU_CLAVE"
+# OPENAI_API_KEY = "TU_CLAVE_OPENAI"
 ```
 
-> Recomendado: `gemini_api_key`. Nunca subas esta clave al repositorio ni la imprimas en logs.
+> Recomendado: `gemini_api_key` y `openai_api_key`. Nunca subas estas claves al repositorio ni las imprimas en logs.
+
+**Paso manual (si tienes la API en un bloc de notas):** copia/pega esas dos claves en tu `.streamlit/secrets.toml`, guarda el archivo y reinicia la app con `streamlit run app.py`.
 
 ### Levantar la aplicación
 

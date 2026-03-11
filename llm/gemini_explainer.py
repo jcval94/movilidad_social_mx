@@ -1,5 +1,6 @@
 import json
 import os
+from urllib import error, request
 from typing import Any
 
 SYSTEM_PROMPT_EXPLAINER = (
@@ -36,7 +37,31 @@ SYSTEM_PROMPT_EXPLAINER = (
 )
 
 DEFAULT_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-3-flash-preview")
+OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL_NAME", "gpt-5-nano")
+OPENAI_TIMEOUT_S = float(os.getenv("OPENAI_TIMEOUT_S", "30"))
 GENERATION_FALLBACK_MSG = "No se pudo generar explicación, reintenta."
+
+def _extract_openai_output_text(body: dict[str, Any]) -> str:
+    direct = str(body.get("output_text", "")).strip()
+    if direct:
+        return direct
+
+    output_items = body.get("output", [])
+    if not isinstance(output_items, list):
+        return ""
+
+    texts: list[str] = []
+    for item in output_items:
+        if not isinstance(item, dict):
+            continue
+        for content in item.get("content", []):
+            if not isinstance(content, dict):
+                continue
+            if content.get("type") == "output_text":
+                txt = str(content.get("text", "")).strip()
+                if txt:
+                    texts.append(txt)
+    return "\n".join(texts).strip()
 
 
 def _safe_text(value: Any) -> str:
@@ -134,36 +159,74 @@ def generate_explanation(app_state: dict[str, Any]) -> str:
         or os.getenv("GEMINI_API_KEY")
         or os.getenv("gemini_api_key")
     )
-    if not gemini_api_key:
-        return (
-            "No se encontró la clave de Gemini. Configúrala en `st.secrets` "
-            "como `gemini_api_key` o `GEMINI_API_KEY` para habilitar la explicación personalizada."
-        )
-
-    try:
-        from google import genai
-        from google.genai import types
-    except Exception:
-        return (
-            "Falta la dependencia `google-genai`. Instálala con "
-            "`pip install -U google-genai`."
-        )
-
     context_text = build_context_text(app_state)
+    openai_api_key = (
+        app_state.get("openai_api_key")
+        or os.getenv("OPENAI_API_KEY")
+        or os.getenv("openai_api_key")
+    )
 
-    try:
-        os.environ["GEMINI_API_KEY"] = gemini_api_key
-        client = genai.Client()
-        response = client.models.generate_content(
-            model=app_state.get("model_name", DEFAULT_MODEL_NAME),
-            contents=context_text,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT_EXPLAINER,
-            ),
+    if not gemini_api_key and not openai_api_key:
+        return (
+            "No se encontró ninguna clave de IA. Configura `gemini_api_key`/`GEMINI_API_KEY` "
+            "o `openai_api_key`/`OPENAI_API_KEY` en `st.secrets` para habilitar la explicación personalizada."
         )
-        text = getattr(response, "text", None)
-        if text:
-            return text
-        return GENERATION_FALLBACK_MSG
-    except Exception:
-        return GENERATION_FALLBACK_MSG
+
+    if gemini_api_key:
+        try:
+            from google import genai
+            from google.genai import types
+
+            os.environ["GEMINI_API_KEY"] = gemini_api_key
+            client = genai.Client()
+            response = client.models.generate_content(
+                model=app_state.get("model_name", DEFAULT_MODEL_NAME),
+                contents=context_text,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT_EXPLAINER,
+                ),
+            )
+            text = getattr(response, "text", None)
+            if text:
+                return text
+        except Exception:
+            pass
+
+    if openai_api_key:
+        try:
+            payload = {
+                "model": app_state.get("openai_model_name", OPENAI_MODEL_NAME),
+                "input": [
+                    {"role": "system", "content": SYSTEM_PROMPT_EXPLAINER},
+                    {"role": "user", "content": context_text},
+                ],
+            }
+            req = request.Request(
+                "https://api.openai.com/v1/responses",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {openai_api_key}",
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with request.urlopen(req, timeout=OPENAI_TIMEOUT_S) as response:
+                body = json.loads(response.read().decode("utf-8"))
+
+            output_text = _extract_openai_output_text(body)
+            if output_text:
+                return output_text
+        except (error.URLError, error.HTTPError, TimeoutError, ValueError, KeyError):
+            pass
+
+    if gemini_api_key and not openai_api_key:
+        return (
+            "Gemini falló y no hay clave de OpenAI configurada. Agrega `openai_api_key` "
+            "o `OPENAI_API_KEY` en `st.secrets` para usar el respaldo automático."
+        )
+    if openai_api_key and not gemini_api_key:
+        return (
+            "OpenAI falló y no hay clave de Gemini configurada. Agrega `gemini_api_key` "
+            "o `GEMINI_API_KEY` en `st.secrets` para usar Gemini como principal."
+        )
+    return GENERATION_FALLBACK_MSG

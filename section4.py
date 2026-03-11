@@ -531,6 +531,16 @@ def get_gemini_api_key():
     return ""
 
 
+def get_openai_api_key():
+    try:
+        for key in ("openai_api_key", "OPENAI_API_KEY"):
+            if key in st.secrets and str(st.secrets[key]).strip():
+                return str(st.secrets[key]).strip()
+    except Exception:
+        pass
+    return ""
+
+
 def get_active_filters_from_session():
     filters = []
     selected_vars = st.session_state.get("selected_vars", [])
@@ -866,6 +876,7 @@ def show_section4():
             "active_filters": get_active_filters_from_session(),
             "questionnaire": df_respuestas.to_dict(orient="records"),
             "gemini_api_key": get_gemini_api_key(),
+            "openai_api_key": get_openai_api_key(),
         }
 
         job = enqueue_diagnosis(app_state)
