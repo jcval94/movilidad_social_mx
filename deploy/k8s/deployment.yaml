@@ -68,6 +68,11 @@ spec:
                 secretKeyRef:
                   name: movilidad-social-secrets
                   key: gemini_api_key
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: movilidad-social-secrets
+                  key: openai_api_key
             - name: REDIS_URL
               value: redis://redis-master.movilidad-social.svc.cluster.local:6379/0
             - name: REDIS_REQUIRED
