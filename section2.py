@@ -3,7 +3,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
+import plotly.graph_objects as go
 
 from data_utils import load_and_process_data
 
@@ -103,9 +103,6 @@ def show_section2():
         result_type='expand'
     )
     df_stats[['ci_low', 'ci_high']] = ci_bounds
-    df_stats['err_plus'] = df_stats['ci_high'] - df_stats['pct_dest']
-    df_stats['err_minus'] = df_stats['pct_dest'] - df_stats['ci_low']
-
     # Convertir cohort_5y a valor numérico
     df_stats['cohort_start'] = df_stats['cohort_5y'].apply(get_lower_year)
     df_stats.sort_values('cohort_start', inplace=True)
@@ -127,41 +124,87 @@ def show_section2():
     if min_n < SMALL_SAMPLE_THRESHOLD:
         st.warning("⚠️ Muestra chica en algunos puntos de la serie temporal. Interpretar con cautela.")
 
-    fig = px.line(
-        df_stats,
-        x='cohort_start',
-        y='pct_dest',
-        color=color_column,
-        markers=True,
-        title=chart_title,
-        labels={
-            'cohort_start': "Año de nacimiento",
-            'pct_dest': "Probabilidad de cambio",
-            color_column: "Categoría"
-        }
-        # Podrías definir color_discrete_sequence para "igualar" la paleta
-        # color_discrete_sequence=["gray","skyblue","salmon","green","red",...]
-    )
+    fig = go.Figure()
+    category_values = sorted(df_stats[color_column].dropna().unique().tolist())
+    color_palette = [
+        "#2563eb", "#ef4444", "#14b8a6", "#f59e0b", "#8b5cf6", "#06b6d4",
+        "#ec4899", "#84cc16", "#f97316", "#6366f1"
+    ]
+    color_map = {cat: color_palette[i % len(color_palette)] for i, cat in enumerate(category_values)}
+
+    for cat in category_values:
+        subset = df_stats[df_stats[color_column] == cat].sort_values('cohort_start')
+        if subset.empty:
+            continue
+
+        fig.add_trace(
+            go.Scatter(
+                x=subset['cohort_start'],
+                y=subset['ci_high'],
+                mode='lines',
+                line=dict(width=0),
+                hoverinfo='skip',
+                showlegend=False,
+                legendgroup=str(cat),
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=subset['cohort_start'],
+                y=subset['ci_low'],
+                mode='lines',
+                line=dict(width=0),
+                fill='tonexty',
+                fillcolor=hex_to_rgba(color_map[cat], 0.18),
+                hovertemplate=(
+                    "Categoría: %{text}<br>"
+                    "IC 95%: %{y:.1f}%<extra></extra>"
+                ),
+                text=[cat] * len(subset),
+                showlegend=False,
+                legendgroup=str(cat),
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=subset['cohort_start'],
+                y=subset['pct_dest'],
+                mode='lines+markers+text',
+                name=str(cat),
+                legendgroup=str(cat),
+                line=dict(width=2.5, color=color_map[cat]),
+                marker=dict(size=7, color=color_map[cat]),
+                text=[f"{val:.1f}%" for val in subset['pct_dest']],
+                textposition='top center',
+                hovertemplate=(
+                    "Categoría: %{fullData.name}<br>"
+                    "Año: %{x}<br>"
+                    "Probabilidad: %{y:.1f}%<br>"
+                    "IC 95%: [%{customdata[0]:.1f}%, %{customdata[1]:.1f}%]"
+                    "<extra></extra>"
+                ),
+                customdata=np.column_stack([subset['ci_low'], subset['ci_high']]),
+            )
+        )
+
     fig.update_layout(
+        title=chart_title,
         width=800,
         height=600,
         legend_title_text="Categoría",
+        xaxis_title="Año de nacimiento",
+        yaxis_title="Probabilidad de cambio (%)",
     )
     fig.update_xaxes(showgrid=False)
-    fig.update_yaxes(showgrid=False)
-
-    for trace in fig.data:
-        label = trace.name
-        subset = df_stats[df_stats[color_column] == label].sort_values('cohort_start')
-        trace.error_y = dict(
-            type='data',
-            symmetric=False,
-            array=subset['err_plus'].tolist(),
-            arrayminus=subset['err_minus'].tolist(),
-            visible=True
-        )
+    fig.update_yaxes(showgrid=False, ticksuffix='%')
 
     st.plotly_chart(fig, width="stretch")
+
+def hex_to_rgba(hex_color, alpha=1.0):
+    hex_color = hex_color.lstrip('#')
+    r, g, b = (int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    return f"rgba({r}, {g}, {b}, {alpha})"
+
 
 def add_cohort_5y_column(df, base_year=2017, step=3):
     def assign_cohort_5y(age):
