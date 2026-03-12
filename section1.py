@@ -172,7 +172,7 @@ def show_section1():
     st.markdown(
         """
         <div style="margin-bottom: 2rem;">
-            <h1 style="color: #0f172a; margin-bottom: 0;">◼️ El Simulador de 100 Vidas</h1>
+            <h1 style="color: #0f172a; margin-bottom: 0;">👥 El Simulador de 100 Vidas</h1>
             <p style="color: #475569; font-size: 1.1rem;">
                 Si 100 personas nacieran hoy en distintas clases sociales de México, ¿cuál sería su destino final?
                 Selecciona un perfil y observa cómo cambian sus oportunidades.
