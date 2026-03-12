@@ -21,6 +21,27 @@ def apply_global_styles():
             --ui-surface: var(--secondary-background-color, #ffffff);
             --ui-text: var(--text-color, #111827);
             --ui-muted-text: color-mix(in srgb, var(--ui-text) 62%, transparent);
+            --ui-panel: color-mix(in srgb, var(--ui-surface) 94%, #eef2ff 6%);
+            --ui-chip-bg: color-mix(in srgb, var(--ui-surface) 96%, #ffffff 4%);
+            --ui-chip-border: color-mix(in srgb, var(--ui-border) 72%, #cbd5e1 28%);
+            --ui-chip-text: var(--ui-text);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --ui-panel: color-mix(in srgb, var(--ui-surface) 88%, #312e81 12%);
+                --ui-chip-bg: color-mix(in srgb, var(--ui-surface) 90%, #0f172a 10%);
+                --ui-chip-border: color-mix(in srgb, var(--ui-border) 72%, #475569 28%);
+                --ui-chip-text: color-mix(in srgb, var(--ui-text) 96%, #ffffff 4%);
+            }
+        }
+
+        :root[data-theme="dark"],
+        :root[data-base-theme="dark"] {
+            --ui-panel: color-mix(in srgb, var(--ui-surface) 88%, #312e81 12%);
+            --ui-chip-bg: color-mix(in srgb, var(--ui-surface) 90%, #0f172a 10%);
+            --ui-chip-border: color-mix(in srgb, var(--ui-border) 72%, #475569 28%);
+            --ui-chip-text: color-mix(in srgb, var(--ui-text) 96%, #ffffff 4%);
         }
 
         .stButton > button,
@@ -140,7 +161,7 @@ def apply_global_styles():
             border-radius: 14px;
             padding: 16px 18px 10px;
             margin: 0 0 18px;
-            background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+            background: linear-gradient(135deg, var(--ui-panel) 0%, color-mix(in srgb, var(--ui-panel) 84%, var(--ui-surface) 16%) 100%);
             box-shadow: var(--ui-shadow);
         }
         .section-switcher-title {
@@ -154,10 +175,11 @@ def apply_global_styles():
             flex-wrap: wrap;
         }
         div[data-testid="stRadio"] div[role="radiogroup"] > label {
-            border: 1px solid #cbd5e1;
+            border: 1px solid var(--ui-chip-border);
             border-radius: 999px;
             padding: 0.45rem 0.85rem;
-            background: #ffffff;
+            background: var(--ui-chip-bg);
+            color: var(--ui-chip-text);
             transition: all 0.2s ease;
             min-height: 2.35rem;
             display: inline-flex;
@@ -182,6 +204,7 @@ def apply_global_styles():
             margin: 0;
             font-size: 0.95rem;
             font-weight: 600;
+            color: inherit;
         }
 
 
