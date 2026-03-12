@@ -139,28 +139,23 @@ def show_section2():
 
         fig.add_trace(
             go.Scatter(
-                x=subset['cohort_start'],
-                y=subset['ci_high'],
+                x=np.concatenate([
+                    subset['cohort_start'].to_numpy(),
+                    subset['cohort_start'].to_numpy()[::-1],
+                ]),
+                y=np.concatenate([
+                    subset['ci_high'].to_numpy(),
+                    subset['ci_low'].to_numpy()[::-1],
+                ]),
                 mode='lines',
                 line=dict(width=0),
-                hoverinfo='skip',
-                showlegend=False,
-                legendgroup=str(cat),
-            )
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=subset['cohort_start'],
-                y=subset['ci_low'],
-                mode='lines',
-                line=dict(width=0),
-                fill='tonexty',
+                fill='toself',
                 fillcolor=hex_to_rgba(color_map[cat], 0.18),
                 hovertemplate=(
                     "Categoría: %{text}<br>"
-                    "IC 95%: %{y:.1f}%<extra></extra>"
+                    "Área IC 95%<extra></extra>"
                 ),
-                text=[cat] * len(subset),
+                text=[cat] * (2 * len(subset)),
                 showlegend=False,
                 legendgroup=str(cat),
             )
