@@ -182,6 +182,7 @@ def show_section1():
             <p style="color: #475569; font-size: 1.1rem;">
                 Si 100 personas nacieran hoy en distintas clases sociales de México, ¿cuál sería su destino final?
                 Selecciona un perfil y observa cómo cambian sus oportunidades.
+                Si quieres una simulación automática, haz clic en <strong>🎲 Random</strong>.
                 <strong style="color: #059669;">(Verde = Movilidad Ascendente, Rojo = Trampa de Pobreza)</strong>.
             </p>
         </div>
