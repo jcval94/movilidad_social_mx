@@ -375,9 +375,9 @@ def show_section3():
                 color='Clase',
                 title=""
             )
-            fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+            fig.update_traces(texttemplate='%{text:.0%}', textposition='outside', hovertemplate='Clase=%{x}<br>Probabilidad=%{y:.1%}<extra></extra>')
             fig.update_layout(
-                yaxis=dict(title='Probabilidad'),
+                yaxis=dict(title='Probabilidad (%)', tickformat='.0%'),
                 xaxis=dict(title='Clase'),
                 uniformtext_minsize=8,
                 uniformtext_mode='hide'
