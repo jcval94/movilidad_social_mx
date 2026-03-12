@@ -44,6 +44,17 @@ def apply_global_styles():
             --ui-chip-text: color-mix(in srgb, var(--ui-text) 96%, #ffffff 4%);
         }
 
+        :root[data-theme="dark"] div[data-testid="stRadio"] div[role="radiogroup"] > label,
+        :root[data-base-theme="dark"] div[data-testid="stRadio"] div[role="radiogroup"] > label {
+            background: #1f2937;
+            border-color: #4b5563;
+            color: #f9fafb;
+        }
+        :root[data-theme="dark"] div[data-testid="stRadio"] div[role="radiogroup"] > label p,
+        :root[data-base-theme="dark"] div[data-testid="stRadio"] div[role="radiogroup"] > label p {
+            color: inherit !important;
+        }
+
         .stButton > button,
         .stFormSubmitButton > button,
         .stLinkButton > a {
@@ -236,7 +247,7 @@ def main():
         "👤 ¿Qué clase soy?",
         "🚀 Pobre a Rico",
         "📊 Simulación de las 100 vidas",
-        "📅 Evolución Temporal",
+        "📅 Boomers vs X vs Millenials",
     ]
     st.markdown(
         """
@@ -253,7 +264,7 @@ def main():
         label_visibility="collapsed",
     )
 
-    show_sidebar_filters = selected_section in {"📊 Simulación de las 100 vidas", "📅 Evolución Temporal"}
+    show_sidebar_filters = selected_section in {"📊 Simulación de las 100 vidas", "📅 Boomers vs X vs Millenials"}
 
     # -----------------------------------------------------------------
     # BARRA LATERAL (parte superior): Botones Refresh y Random
@@ -285,7 +296,7 @@ def main():
         show_section4()
     elif selected_section == "📊 Simulación de las 100 vidas":
         show_section1()
-    else:
+    elif selected_section == "📅 Boomers vs X vs Millenials":
         show_section2()
 
 if __name__ == "__main__":
