@@ -1,18 +1,16 @@
-# Release Checklist Interna
+# Release Checklist Interna (Streamlit)
 
 ## Calidad técnica (obligatorio)
-- [ ] Linting en verde (`ruff check src tests scripts`).
-- [ ] Type checking en verde (`mypy src/backtest src/execution src/notifications src/reporting src/storage scripts/validate_repo.py`).
+- [ ] Linting en verde (`ruff check .`).
 - [ ] Unit tests en verde (`pytest -q`).
-- [ ] Smoke tests end-to-end en verde (`python scripts/validate_repo.py --smoke`).
-- [ ] Cobertura mínima razonable alcanzada (>= 65% en CI).
-- [ ] Validación estricta de repo en verde (`python scripts/validate_repo.py --strict`).
+- [ ] Verificación rápida de imports (`python -m py_compile app.py section1.py section2.py section3.py section4.py data_utils.py config.py async_jobs.py diagnosis_worker.py session_manager.py state_backend.py llm/gemini_explainer.py`).
+- [ ] La app inicia sin errores (`streamlit run app.py --server.headless true`).
 
-## Seguridad y operación
+## Datos y operación
+- [ ] Archivos requeridos de `data/` presentes.
+- [ ] Modelo en `models/modelo_entrenado.joblib` presente.
 - [ ] Revisión de secretos accidentalmente versionados.
-- [ ] Verificación de permisos inseguros (archivos world-writable).
-- [ ] Validación de schemas de datasets de exportación para Pages.
-- [ ] Confirmar que no se exponen datos sensibles en exportación estática.
+- [ ] Confirmar que no se exponen datos sensibles en tablas/exportaciones.
 
 ## Trazabilidad
 - [ ] Changelog interno actualizado.
