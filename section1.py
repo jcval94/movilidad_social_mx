@@ -1,398 +1,242 @@
-# section1.py
+import math
 
-import streamlit as st
-import pandas as pd
-import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import streamlit as st
 
+from config import POSSIBLE_VARS, VAR_CATEGORIES
 from data_utils import load_and_process_data
-from config import VAR_CATEGORIES, POSSIBLE_VARS
 
 SMALL_SAMPLE_THRESHOLD = 30
-FILTER_BLUE = "#87CEEB"
-FILTER_RED = "#FA8072"
+
+DESTINATIONS = [
+    {"label": "Baja Baja", "hex": "#dc2626", "text_col": "#b91c1c", "q": 1},
+    {"label": "Baja Alta", "hex": "#f97316", "text_col": "#c2410c", "q": 2},
+    {"label": "Media Baja", "hex": "#f59e0b", "text_col": "#b45309", "q": 3},
+    {"label": "Media Alta", "hex": "#14b8a6", "text_col": "#0f766e", "q": 4},
+    {"label": "Alta", "hex": "#2563eb", "text_col": "#1d4ed8", "q": 5},
+]
+
 
 def random_filter_selection():
-    """
-    Elige aleatoriamente 2 variables y 1..3 categorías de cada una (para Sección 1).
-    Se invoca desde main.py al pulsar el botón "Random".
-    """
     import random
+
     for var in POSSIBLE_VARS:
         st.session_state[f"cats_{var}"] = []
 
-    # Elegimos 2 variables al azar
-    num_vars = 2
-    chosen_vars = random.sample(POSSIBLE_VARS, num_vars)
-    st.session_state['selected_vars'] = chosen_vars
+    chosen_vars = random.sample(POSSIBLE_VARS, 2)
+    st.session_state["selected_vars"] = chosen_vars
 
-    # Para cada variable elegida, seleccionamos entre 1..3 categorías
     for var in chosen_vars:
         cat_options = VAR_CATEGORIES.get(var, [])
         if cat_options:
-            num_cats = random.randint(1, min(3, len(cat_options)))
-            chosen_cats = random.sample(cat_options, num_cats)
+            chosen_cats = random.sample(cat_options, random.randint(1, min(3, len(cat_options))))
             st.session_state[f"cats_{var}"] = chosen_cats
 
+
+def get_100_dots(percentages):
+    dots, remainders = [], []
+    total = 0
+
+    for i, p in enumerate(percentages):
+        count = math.floor(p)
+        total += count
+        dots.extend([i] * count)
+        remainders.append({"index": i, "rem": p - count})
+
+    remainders.sort(key=lambda x: x["rem"], reverse=True)
+    needed = 100 - total
+    for i in range(needed):
+        dots.append(remainders[i]["index"])
+
+    dots.sort()
+    return dots
+
+
+def render_waffle_chart(dots, title, subtitle):
+    html = f"""
+    <div style="background-color:white;padding:25px;border-radius:15px;border:1px solid #e2e8f0;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <h3 style="margin:0 0 5px 0;color:#1e293b;font-family:sans-serif;text-transform:uppercase;font-size:1.2rem;font-weight:900;">{title}</h3>
+        <p style="margin:0 0 20px 0;color:#64748b;font-size:0.9rem;font-family:sans-serif;">{subtitle}</p>
+        <div style="display:grid;grid-template-columns:repeat(10, 1fr);gap:6px;max-width:380px;margin:0 auto;">
+    """
+    for d in dots:
+        color = DESTINATIONS[d]["hex"]
+        label = DESTINATIONS[d]["label"]
+        person_color = "#0f172a" if is_light_hex(color) else "#f8fafc"
+        html += (
+            f'<div style="background-color:{color};height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;'
+            f'color:{person_color};font-size:16px;box-shadow:0 1px 2px rgba(0,0,0,0.1);" title="Destino: {label}">●</div>'
+        )
+
+    html += "</div></div>"
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def render_divergent_bar_chart(current_vals, base_vals, title):
+    labels = [d["label"] for d in DESTINATIONS]
+    diffs = [c - b for c, b in zip(current_vals, base_vals)]
+    text_labels = [f"+{d:.1f} pp" if d > 0 else f"{d:.1f} pp" for d in diffs]
+    text_labels = [t if t not in ["+0.0 pp", "0.0 pp", "-0.0 pp"] else "" for t in text_labels]
+    bar_colors = ["#10b981" if d > 0 else "#f43f5e" for d in diffs]
+
+    max_abs_diff = max([abs(d) for d in diffs] + [1.0])
+    axis_limit = min(60, max(6, math.ceil((max_abs_diff + 1) / 5) * 5))
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Bar(
+            x=diffs[::-1],
+            y=labels[::-1],
+            orientation="h",
+            marker_color=bar_colors[::-1],
+            text=text_labels[::-1],
+            textposition="outside",
+            textfont=dict(size=12, color="gray", family="sans-serif"),
+            hoverinfo="x+y",
+        )
+    )
+
+    fig.update_layout(
+        title=dict(text=f"Cambio vs Promedio ({title})", font=dict(size=14, color="#64748b")),
+        margin=dict(l=0, r=40, t=40, b=0),
+        height=250,
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(
+            title="Diferencia en Puntos Porcentuales (pp)",
+            zeroline=True,
+            zerolinewidth=2,
+            zerolinecolor="#cbd5e1",
+            showgrid=False,
+            range=[-axis_limit, axis_limit],
+            tickfont=dict(color="#94a3b8"),
+        ),
+        yaxis=dict(showgrid=False, tickfont=dict(size=13, color="#334155", family="sans-serif")),
+        showlegend=False,
+    )
+
+    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+
+
+
+def is_light_hex(hex_color):
+    hex_color = hex_color.lstrip("#")
+    r, g, b = (int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
+    luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    return luminance > 0.6
+
+
+def get_origin_distribution(df, origin_quintile):
+    subset = df[df["a_los_14_quintile"] == origin_quintile]
+    n = len(subset)
+    if n == 0:
+        return [0.0] * len(DESTINATIONS), 0
+
+    dist = subset["actualmente_quintile"].value_counts(normalize=True).sort_index() * 100
+    values = [float(dist.get(d["q"], 0.0)) for d in DESTINATIONS]
+    return values, n
+
+
 def show_section1():
-    """
-    Sección Movilidad: "Movilidad Socioeconómica Q1 vs Q5".
-    """
-    if 'selected_vars' not in st.session_state:
-        st.session_state['selected_vars'] = []
+    if "selected_vars" not in st.session_state:
+        st.session_state["selected_vars"] = []
     for var in POSSIBLE_VARS:
-        if f"cats_{var}" not in st.session_state:
-            st.session_state[f"cats_{var}"] = []
+        st.session_state.setdefault(f"cats_{var}", [])
 
-    # ----------------
-    # Barra lateral: (Ya tenemos los botones en main.py)
-    # ----------------
-
-    # 1) Selección de variables
-    st.session_state['selected_vars'] = st.sidebar.multiselect(
+    st.session_state["selected_vars"] = st.sidebar.multiselect(
         "Selecciona las variables (máximo 3)",
         options=POSSIBLE_VARS,
-        default=st.session_state['selected_vars'],
-        max_selections=3
+        default=st.session_state["selected_vars"],
+        max_selections=3,
     )
 
-    for var in st.session_state['selected_vars']:
-        cat_options = VAR_CATEGORIES.get(var, [])
+    for var in st.session_state["selected_vars"]:
         st.session_state[f"cats_{var}"] = st.sidebar.multiselect(
             f"{var.capitalize()}:",
-            cat_options,
-            default=st.session_state[f"cats_{var}"]
+            VAR_CATEGORIES.get(var, []),
+            default=st.session_state[f"cats_{var}"],
         )
 
-    # 2) Cargar datos
     df = load_and_process_data()
-
-
-    # 3) Filtro principal
     df_filter = apply_dynamic_filter(df)
 
-    # 4) Checkbox "Cambiar base"
     st.sidebar.markdown("---")
     cambiar_base = st.sidebar.checkbox("Cambiar base", value=False)
-    if cambiar_base:
-        df_base = show_base_filters(df)
-    else:
-        df_base = df
+    df_base = show_base_filters(df) if cambiar_base else df
 
-    # 5) Construir el título a partir de los filtros
-    filter_desc = describe_filter_selection(st.session_state['selected_vars'], prefix="Filtro: ")
-    if cambiar_base and 'base_selected_vars' in st.session_state and st.session_state['base_selected_vars']:
-        base_desc = describe_filter_selection(st.session_state['base_selected_vars'], prefix="Base: ", base=True)
-        main_title = f"{filter_desc} vs {base_desc}"
-    else:
-        main_title = filter_desc or "Sin Filtro (Base General)"
+    baja_vals, baja_n = get_origin_distribution(df_filter, 1)
+    alta_vals, alta_n = get_origin_distribution(df_filter, 5)
+    base_baja_vals, _ = get_origin_distribution(df_base, 1)
+    base_alta_vals, _ = get_origin_distribution(df_base, 5)
 
-    # 6) Plot interactivo con Plotly
-    fig, sample_sizes, extremos = plot_mobility_interactive(df_filter, df_base)
-
-    # Colocamos el título principal arriba de la figura
-    # st.markdown("## Movilidad Socioeconómica Q1 vs Q5")
-    st.write(f"*{main_title}*")
-
-    st.caption(
-        "Tamaño de muestra (filtro): "
-        f"Origen Clase Baja n={sample_sizes['q1_filter_n']}, "
-        f"Origen Clase Alta n={sample_sizes['q5_filter_n']}"
+    st.markdown(
+        """
+        <div style="margin-bottom: 2rem;">
+            <h1 style="color: #0f172a; margin-bottom: 0;">👥 El Simulador de 100 Vidas</h1>
+            <p style="color: #475569; font-size: 1.1rem;">
+                Si 100 personas nacieran hoy en distintas clases sociales de México, ¿cuál sería su destino final?
+                Selecciona un perfil y observa cómo cambian sus oportunidades.
+                <strong style="color: #059669;">(Verde = Movilidad Ascendente, Rojo = Trampa de Pobreza)</strong>.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    if min(sample_sizes['q1_filter_n'], sample_sizes['q5_filter_n']) < SMALL_SAMPLE_THRESHOLD:
-        st.warning(
-            "⚠️ Muestra chica en al menos uno de los grupos filtrados. "
-            "Interpretar con cautela."
-        )
+    st.caption(f"Tamaño de muestra (filtro): Origen clase baja n={baja_n}, origen clase alta n={alta_n}.")
+    if min(baja_n, alta_n) < SMALL_SAMPLE_THRESHOLD:
+        st.warning("⚠️ Muestra chica en al menos uno de los grupos filtrados. Interpretar con cautela.")
 
-    st.plotly_chart(fig, width="stretch")
+    col_waffle_baja, col_waffle_alta = st.columns(2)
+    with col_waffle_baja:
+        render_waffle_chart(get_100_dots(baja_vals), "Cuna: Clase Baja", "De 100 personas nacidas en la base...")
+    with col_waffle_alta:
+        render_waffle_chart(get_100_dots(alta_vals), "Cuna: Clase Alta", "De 100 personas nacidas en la cima...")
 
-    contexto_filtros = obtener_texto_filtros_activos()
-    diff_baja_pp = extremos['pct_inmovilidad_baja'] - extremos['pct_inmovilidad_baja_promedio']
-    diff_alta_pp = extremos['pct_persistencia_alta'] - extremos['pct_persistencia_alta_promedio']
+    st.markdown("<br>", unsafe_allow_html=True)
+    col_stat_baja, col_stat_alta = st.columns(2)
 
-    mensaje_azul = (
-        f"⬆️ Para el perfil ({contexto_filtros}): el {extremos['pct_inmovilidad_baja']:.1f}% "
-        "de quienes nacen en la clase baja se queda ahí "
-        f"({diff_baja_pp:+.1f} pp vs promedio)."
-    )
-    mensaje_rojo = (
-        f"⬆️ Para el perfil ({contexto_filtros}): el {extremos['pct_persistencia_alta']:.1f}% "
-        "de quienes nacen en la clase alta mantiene su posición "
-        f"({diff_alta_pp:+.1f} pp vs promedio)."
-    )
+    with col_stat_baja:
+        st.markdown("#### Cuna: Clase Baja · Cambio vs base (pp)")
+        render_divergent_bar_chart(baja_vals, base_baja_vals, "Origen Baja")
 
-    msg_col_left, msg_col_right = st.columns(2)
-    with msg_col_left:
-        st.markdown(
-            f"<div style='color:{FILTER_BLUE}; font-weight:600;'>{mensaje_azul}</div>",
-            unsafe_allow_html=True,
-        )
-    with msg_col_right:
-        st.markdown(
-            f"<div style='color:{FILTER_RED}; font-weight:600;'>{mensaje_rojo}</div>",
-            unsafe_allow_html=True,
-        )
+    with col_stat_alta:
+        st.markdown("#### Cuna: Clase Alta · Cambio vs base (pp)")
+        render_divergent_bar_chart(alta_vals, base_alta_vals, "Origen Alta")
+
 
 def apply_dynamic_filter(df):
     dff = df.copy()
-    for var in st.session_state['selected_vars']:
+    for var in st.session_state["selected_vars"]:
         chosen_cats = st.session_state.get(f"cats_{var}", [])
         if chosen_cats:
             dff = dff[dff[var].isin(chosen_cats)]
     return dff
 
+
 def show_base_filters(df):
-    if 'base_selected_vars' not in st.session_state:
-        st.session_state['base_selected_vars'] = []
+    st.session_state.setdefault("base_selected_vars", [])
     for var in POSSIBLE_VARS:
-        key_base_cats = f"base_cats_{var}"
-        if key_base_cats not in st.session_state:
-            st.session_state[key_base_cats] = []
+        st.session_state.setdefault(f"base_cats_{var}", [])
 
     st.sidebar.markdown("**Base personalizada**:")
-    st.session_state['base_selected_vars'] = st.sidebar.multiselect(
+    st.session_state["base_selected_vars"] = st.sidebar.multiselect(
         "Variables base:",
         options=POSSIBLE_VARS,
-        default=st.session_state['base_selected_vars'],
-        max_selections=3
+        default=st.session_state["base_selected_vars"],
+        max_selections=3,
     )
-    for var in st.session_state['base_selected_vars']:
-        cat_options = VAR_CATEGORIES.get(var, [])
+
+    for var in st.session_state["base_selected_vars"]:
         st.session_state[f"base_cats_{var}"] = st.sidebar.multiselect(
             f"{var.capitalize()} (base):",
-            cat_options,
-            default=st.session_state[f"base_cats_{var}"]
+            VAR_CATEGORIES.get(var, []),
+            default=st.session_state[f"base_cats_{var}"],
         )
 
     dff = df.copy()
-    for var in st.session_state['base_selected_vars']:
+    for var in st.session_state["base_selected_vars"]:
         chosen_cats = st.session_state.get(f"base_cats_{var}", [])
         if chosen_cats:
             dff = dff[dff[var].isin(chosen_cats)]
     return dff
-
-def describe_filter_selection(selected_vars, prefix="", base=False):
-    parts = []
-    for var in selected_vars:
-        chosen_cats = st.session_state.get(f"{'base_cats_' if base else 'cats_'}{var}", [])
-        if chosen_cats:
-            cats_str = ", ".join(chosen_cats)
-            parts.append(f"{var}={cats_str}")
-
-    if parts:
-        return prefix + "[" + "; ".join(parts) + "]"
-    else:
-        return prefix + "(Sin selección)"
-
-def wilson_ci(successes, n, z=1.96):
-    if n <= 0:
-        return 0.0, 0.0
-    p = successes / n
-    denom = 1 + z**2 / n
-    center = (p + z**2 / (2 * n)) / denom
-    margin = (
-        z
-        * np.sqrt((p * (1 - p) / n) + (z**2 / (4 * n**2)))
-        / denom
-    )
-    lower = max(0.0, center - margin)
-    upper = min(1.0, center + margin)
-    return lower * 100, upper * 100
-
-
-def plot_mobility_interactive(df_filter, df_base):
-    """
-    Crea 2 subplots: Origen Clase Baja (Q1) y Origen Clase Alta (Q5),
-    con barra "Base" y "Filtro". Se usan anotaciones personalizadas para
-    que la diferencia sea roja (si <0) o verde (si >0). Se mantiene la
-    misma escala en ambos y en Q5 se oculta el eje Y.
-    Además, se deja ~10% de margen vertical extra para no recortar etiquetas.
-    """
-
-    # Cálculo: Q1 base/filtro
-    q1_base = df_base[df_base['a_los_14_quintile'] == 1]
-    q1_dist_base = q1_base['actualmente_quintile'].value_counts(normalize=True)*100
-    q1_dist_base = q1_dist_base.sort_index()
-
-    q1_filter = df_filter[df_filter['a_los_14_quintile'] == 1]
-    q1_dist_filter = q1_filter['actualmente_quintile'].value_counts(normalize=True)*100
-    q1_dist_filter = q1_dist_filter.sort_index()
-
-    # Cálculo: Q5 base/filtro
-    q5_base = df_base[df_base['a_los_14_quintile'] == 5]
-    q5_dist_base = q5_base['actualmente_quintile'].value_counts(normalize=True)*100
-    q5_dist_base = q5_dist_base.sort_index()
-
-    q5_filter = df_filter[df_filter['a_los_14_quintile'] == 5]
-    q5_dist_filter = q5_filter['actualmente_quintile'].value_counts(normalize=True)*100
-    q5_dist_filter = q5_dist_filter.sort_index()
-
-    quintil_labels = {
-        1: "Baja Baja",
-        2: "Baja Alta",
-        3: "Media Baja",
-        4: "Media Alta",
-        5: "Alta"
-    }
-
-    x_q1 = list(q1_dist_base.index.union(q1_dist_filter.index))
-    x_q5 = list(q5_dist_base.index.union(q5_dist_filter.index))
-
-    q1_filter_n = len(q1_filter)
-    q5_filter_n = len(q5_filter)
-
-    q1_err_plus, q1_err_minus = [], []
-    for k in x_q1:
-        successes = int((q1_filter['actualmente_quintile'] == k).sum())
-        val = q1_dist_filter.get(k, 0)
-        low, up = wilson_ci(successes, q1_filter_n)
-        q1_err_plus.append(max(0, up - val))
-        q1_err_minus.append(max(0, val - low))
-
-    q5_err_plus, q5_err_minus = [], []
-    for k in x_q5:
-        successes = int((q5_filter['actualmente_quintile'] == k).sum())
-        val = q5_dist_filter.get(k, 0)
-        low, up = wilson_ci(successes, q5_filter_n)
-        q5_err_plus.append(max(0, up - val))
-        q5_err_minus.append(max(0, val - low))
-
-    fig = make_subplots(rows=1, cols=2, shared_yaxes=True,
-                        subplot_titles=("Origen Clase Baja", "Origen Clase Alta"))
-
-    # Subplot 1: Q1
-    fig.add_trace(
-        go.Bar(
-            x=[quintil_labels.get(k, str(k)) for k in x_q1],
-            y=[q1_dist_base.get(k, 0) for k in x_q1],
-            name="Base",
-            marker_color="gray",
-            opacity=0.4
-        ),
-        row=1, col=1
-    )
-    fig.add_trace(
-        go.Bar(
-            x=[quintil_labels.get(k, str(k)) for k in x_q1],
-            y=[q1_dist_filter.get(k, 0) for k in x_q1],
-            name="Filtro",
-            marker_color=FILTER_BLUE,
-            error_y=dict(
-                type='data',
-                symmetric=False,
-                array=q1_err_plus,
-                arrayminus=q1_err_minus,
-                visible=True,
-                color='navy'
-            )
-        ),
-        row=1, col=1
-    )
-
-    # Subplot 2: Q5
-    fig.add_trace(
-        go.Bar(
-            x=[quintil_labels.get(k, str(k)) for k in x_q5],
-            y=[q5_dist_base.get(k, 0) for k in x_q5],
-            name="Base",
-            marker_color="gray",
-            opacity=0.4
-        ),
-        row=1, col=2
-    )
-    fig.add_trace(
-        go.Bar(
-            x=[quintil_labels.get(k, str(k)) for k in x_q5],
-            y=[q5_dist_filter.get(k, 0) for k in x_q5],
-            name="Filtro",
-            marker_color=FILTER_RED,
-            error_y=dict(
-                type='data',
-                symmetric=False,
-                array=q5_err_plus,
-                arrayminus=q5_err_minus,
-                visible=True,
-                color='darkred'
-            )
-        ),
-        row=1, col=2
-    )
-
-    # Ajustar layout
-    # - Aumentar 10% en el eje Y
-    max_val_q1 = max(q1_dist_base.max(), q1_dist_filter.max(), 0)
-    max_val_q5 = max(q5_dist_base.max(), q5_dist_filter.max(), 0)
-    overall_max = max(max_val_q1, max_val_q5)
-    fig.update_yaxes(range=[0, overall_max * 1.1], row=1, col=1)
-    # - Eje Y en Q5 invisible pero escalado igual
-    fig.update_yaxes(matches='y', row=1, col=2, visible=False)
-
-    fig.update_layout(
-        barmode='group',
-        showlegend=True,
-        width=900,
-        height=600
-    )
-    fig.update_yaxes(title_text="Probabilidad de moverse a otra Clase", row=1, col=1)
-
-    # Añadir anotaciones para mostrar la diferencia en colores
-    # en la subgráfica Q1
-    for i, k in enumerate(x_q1):
-        val_b = q1_dist_base.get(k, 0)
-        val_f = q1_dist_filter.get(k, 0)
-        diff  = val_f - val_b
-        x_label = quintil_labels.get(k, str(k))
-        color = 'green' if diff >= 0 else 'red'
-        text_str = f"{val_f:.1f}%<br>({diff:+.1f}%)"
-        fig.add_annotation(
-            x=x_label,
-            y=val_f + 1,  # un poco arriba
-            text=f"<span style='color:{color}; font-size:12px;'>{text_str}</span>",
-            showarrow=False,
-            row=1, col=1
-        )
-
-    # en la subgráfica Q5
-    for i, k in enumerate(x_q5):
-        val_b = q5_dist_base.get(k, 0)
-        val_f = q5_dist_filter.get(k, 0)
-        diff  = val_f - val_b
-        x_label = quintil_labels.get(k, str(k))
-        color = 'green' if diff >= 0 else 'red'
-        text_str = f"{val_f:.1f}%<br>({diff:+.1f}%)"
-        fig.add_annotation(
-            x=x_label,
-            y=val_f + 1,
-            text=f"<span style='color:{color}; font-size:12px;'>{text_str}</span>",
-            showarrow=False,
-            row=1, col=2
-        )
-
-    sample_sizes = {
-        'q1_filter_n': q1_filter_n,
-        'q5_filter_n': q5_filter_n,
-    }
-
-    extremos = {
-        'pct_inmovilidad_baja': float(q1_dist_filter.get(1, 0.0)),
-        'pct_inmovilidad_baja_promedio': float(q1_dist_base.get(1, 0.0)),
-        'pct_persistencia_alta': float(q5_dist_filter.get(5, 0.0)),
-        'pct_persistencia_alta_promedio': float(q5_dist_base.get(5, 0.0)),
-    }
-
-    return fig, sample_sizes, extremos
-
-
-def obtener_texto_filtros_activos():
-    filtros_activos = []
-    for variable in ["generation", "education", "sex"]:
-        valores = st.session_state.get(f"cats_{variable}", [])
-        filtros_activos.extend([valor for valor in valores if valor])
-
-    if not filtros_activos:
-        return "Toda la población"
-
-    return ", ".join(filtros_activos)
