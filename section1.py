@@ -34,10 +34,17 @@ def random_filter_selection():
 
 
 def get_100_dots(percentages):
+    clean_percentages = [p if isinstance(p, (int, float)) and math.isfinite(p) and p > 0 else 0.0 for p in percentages]
+    total_percentage = sum(clean_percentages)
+
+    if total_percentage <= 0:
+        return [0] * 100
+
+    scaled_percentages = [p * 100 / total_percentage for p in clean_percentages]
+
     dots, remainders = [], []
     total = 0
-
-    for i, p in enumerate(percentages):
+    for i, p in enumerate(scaled_percentages):
         count = math.floor(p)
         total += count
         dots.extend([i] * count)
@@ -172,7 +179,6 @@ def show_section1():
     st.markdown(
         """
         <div style="margin-bottom: 2rem;">
-            <h1 style="color: #0f172a; margin-bottom: 0;">👥 El Simulador de 100 Vidas</h1>
             <p style="color: #475569; font-size: 1.1rem;">
                 Si 100 personas nacieran hoy en distintas clases sociales de México, ¿cuál sería su destino final?
                 Selecciona un perfil y observa cómo cambian sus oportunidades.
