@@ -190,7 +190,6 @@ def show_section1():
         unsafe_allow_html=True,
     )
 
-    st.caption(f"Tamaño de muestra (filtro): Origen clase baja n={baja_n}, origen clase alta n={alta_n}.")
     if min(baja_n, alta_n) < SMALL_SAMPLE_THRESHOLD:
         st.warning("⚠️ Muestra chica en al menos uno de los grupos filtrados. Interpretar con cautela.")
 

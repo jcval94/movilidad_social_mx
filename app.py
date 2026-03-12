@@ -249,20 +249,16 @@ def main():
         "📊 Simulación de las 100 vidas",
         "📅 Boomers vs X vs Millenials",
     ]
-    st.markdown(
-        """
-        <div class="section-switcher">
-            <p class="section-switcher-title">Explora una ruta</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    selected_section = st.radio(
-        "",
-        options=sections,
-        horizontal=True,
-        label_visibility="collapsed",
-    )
+    switcher_title_col, switcher_nav_col = st.columns([1.2, 4], vertical_alignment="center")
+    with switcher_title_col:
+        st.markdown("<p class='section-switcher-title'>Explora una ruta</p>", unsafe_allow_html=True)
+    with switcher_nav_col:
+        selected_section = st.radio(
+            "",
+            options=sections,
+            horizontal=True,
+            label_visibility="collapsed",
+        )
 
     show_sidebar_filters = selected_section in {"📊 Simulación de las 100 vidas", "📅 Boomers vs X vs Millenials"}
 
