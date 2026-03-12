@@ -212,7 +212,7 @@ def main():
     sections = [
         "👤 ¿Qué clase soy?",
         "🚀 Pobre a Rico",
-        "📊 Movilidad",
+        "📊 Simulación de las 100 vidas",
         "📅 Evolución Temporal",
     ]
     st.markdown(
@@ -230,7 +230,7 @@ def main():
         label_visibility="collapsed",
     )
 
-    show_sidebar_filters = selected_section in {"📊 Movilidad", "📅 Evolución Temporal"}
+    show_sidebar_filters = selected_section in {"📊 Simulación de las 100 vidas", "📅 Evolución Temporal"}
 
     # -----------------------------------------------------------------
     # BARRA LATERAL (parte superior): Botones Refresh y Random
@@ -246,7 +246,7 @@ def main():
 
         with col_btn2:
             if st.button("🎲 Random", key="random_main", help="Selección aleatoria", type="primary"):
-                # Aplica la lógica de random a Sección 1 (Movilidad)
+                # Aplica la lógica de random a Sección 1 (Simulación de las 100 vidas)
                 random_section1()
                 # Aplica la lógica de random a Sección 2 (Evolución Temporal)
                 random_section2()
@@ -260,7 +260,7 @@ def main():
         show_section3()
     elif selected_section == "🚀 Pobre a Rico":
         show_section4()
-    elif selected_section == "📊 Movilidad":
+    elif selected_section == "📊 Simulación de las 100 vidas":
         show_section1()
     else:
         show_section2()
