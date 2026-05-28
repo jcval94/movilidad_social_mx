@@ -1,0 +1,15 @@
+{
+  "request_id": "demo-001",
+  "predicted_class": 3,
+  "predicted_label": "Media Baja",
+  "predicted_probability": 0.42,
+  "probabilities": [
+    {"class_id": 1, "label": "Baja Baja", "probability": 0.1},
+    {"class_id": 2, "label": "Baja Alta", "probability": 0.2},
+    {"class_id": 3, "label": "Media Baja", "probability": 0.42},
+    {"class_id": 4, "label": "Media Alta", "probability": 0.18},
+    {"class_id": 5, "label": "Alta", "probability": 0.1}
+  ],
+  "model_version": "modelo_entrenado.joblib",
+  "feature_order": ["p126d", "p131", "p125d", "p126f", "p126g", "p125e", "p129a", "p125a", "p126b"]
+}
