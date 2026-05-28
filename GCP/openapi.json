@@ -1,0 +1,117 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Movilidad Social MX API",
+    "version": "0.1.0",
+    "description": "API de inferencia para predicción probabilística de clase socioeconómica en México.",
+    "contact": {"name": "Movilidad Social MX"}
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": ["operación"],
+        "summary": "Healthz",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HealthResponse"}}}
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "tags": ["operación"],
+        "summary": "Readyz",
+        "responses": {
+          "200": {"description": "Modelo listo"},
+          "503": {
+            "description": "Modelo no listo",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        }
+      }
+    },
+    "/v1/predict": {
+      "post": {
+        "tags": ["predicción"],
+        "summary": "Predict",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PredictRequest"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PredictResponse"}}}
+          },
+          "422": {
+            "description": "Solicitud inválida",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          },
+          "503": {
+            "description": "Modelo no listo",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PredictRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["features"],
+        "properties": {
+          "request_id": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+          "features": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {"anyOf": [{"type": "number"}, {"type": "integer"}, {"type": "boolean"}]}
+          }
+        }
+      },
+      "Probability": {
+        "type": "object",
+        "required": ["class_id", "label", "probability"],
+        "properties": {
+          "class_id": {"anyOf": [{"type": "integer"}, {"type": "string"}]},
+          "label": {"type": "string"},
+          "probability": {"type": "number", "minimum": 0, "maximum": 1}
+        }
+      },
+      "PredictResponse": {
+        "type": "object",
+        "required": ["predicted_class", "predicted_label", "predicted_probability", "probabilities", "model_version", "feature_order"],
+        "properties": {
+          "request_id": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+          "predicted_class": {"anyOf": [{"type": "integer"}, {"type": "string"}]},
+          "predicted_label": {"type": "string"},
+          "predicted_probability": {"type": "number", "minimum": 0, "maximum": 1},
+          "probabilities": {"type": "array", "items": {"$ref": "#/components/schemas/Probability"}},
+          "model_version": {"type": "string"},
+          "feature_order": {"type": "array", "items": {"type": "string"}}
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status", "service", "version", "environment"],
+        "properties": {
+          "status": {"type": "string"},
+          "service": {"type": "string"},
+          "version": {"type": "string"},
+          "environment": {"type": "string"}
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error", "detail"],
+        "properties": {
+          "error": {"type": "string"},
+          "detail": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "object"}}]}
+        }
+      }
+    }
+  }
+}
